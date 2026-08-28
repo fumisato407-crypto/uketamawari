@@ -355,9 +355,9 @@
         <div class="sb-left">
           <div class="sheet-row"><span class="lbl">熨斗</span><span>${noshiOpts}</span><span class="lbl">サイズ</span><span class="val">${esc(i.noshiSize)}</span></div>
           <div class="sheet-row"><span class="lbl">表書き</span><span class="val">${esc(i.omotegaki)}</span></div>
-          <div class="sheet-row"><span class="lbl">菓子・包材</span><span class="val">${esc(i.packaging)}</span></div>
+          <div class="sheet-row"><span class="lbl">備考</span><span class="val">${esc(i.memo)}</span></div>
         </div>
-        <div class="sb-right"><span class="lbl">備考</span><div class="memo-box">${esc(i.memo)}</div></div>
+        <div class="sb-right"><span class="lbl">菓子・包材</span><div class="memo-box">${esc(i.packaging)}</div></div>
       </div>
     </div>`;
 
