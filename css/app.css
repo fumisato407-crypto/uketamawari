@@ -105,6 +105,70 @@ main.screen { flex-direction: row; }
 /* 下部バー（共通） */
 .bottom-bar { display: flex; gap: 10px; margin-top: auto; padding-top: 12px; }
 
+/* ===== 顧客・受渡情報フォーム ===== */
+#customer-form { flex: 1; overflow-y: auto; max-width: 860px; }
+.form-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid #e2ddd2;
+}
+.form-row > label { width: 170px; flex-shrink: 0; font-weight: bold; font-size: 17px; }
+.form-row .req { color: #c0392b; font-size: 13px; border: 1px solid #c0392b; border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+.form-field { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; }
+.form-field.with-suffix { flex-wrap: nowrap; }
+.form-row input[type="text"], .form-row input[type="tel"],
+.form-row input[type="date"], .form-row input[type="time"], .form-row textarea {
+  min-height: 48px; font-size: 18px; padding: 6px 10px;
+  border: 1px solid #bbb; border-radius: 8px; background: #fff;
+  flex: 1; min-width: 120px;
+}
+.form-row input.short { flex: 0 1 140px; }
+.form-row textarea { resize: none; }
+.suffix { font-size: 18px; }
+.mini-label { font-size: 15px; color: #666; white-space: nowrap; }
+.btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.toggle-btn {
+  min-height: 48px; padding: 0 18px; font-size: 17px;
+  border: 2px solid #bbb; border-radius: 8px; background: #fff; color: #333;
+}
+.toggle-btn.active { background: #4a3b2a; border-color: #4a3b2a; color: #fff; font-weight: bold; }
+.form-row.hidden { display: none; }
+#item-notes { flex-direction: column; align-items: stretch; }
+.item-note-row { display: flex; align-items: center; gap: 8px; }
+.item-note-row .in-name { width: 180px; flex-shrink: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#item-notes .none { color: #999; font-size: 15px; }
+
+/* ===== 印刷プレビュー（画面表示） ===== */
+#preview-scroll { flex: 1; overflow: auto; background: #888; padding: 16px; border-radius: 8px; }
+#print-sheet {
+  width: 190mm; min-height: 277mm; margin: 0 auto;
+  background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  padding: 8mm;
+}
+
+/* ===== 承り表（A4・画面と印刷で共用） ===== */
+.sheet { font-size: 12pt; color: #000; user-select: text; }
+.sheet-header { display: flex; align-items: baseline; gap: 8mm; border-bottom: 2px solid #000; padding-bottom: 2mm; }
+.sheet-header .sheet-title { font-size: 22pt; font-weight: bold; letter-spacing: 8px; }
+.sheet-header .sheet-date { margin-left: auto; }
+.sheet-row { display: flex; border-bottom: 1px solid #000; padding: 2.5mm 1mm; gap: 3mm; align-items: baseline; }
+.sheet-row .lbl { font-size: 10pt; color: #333; white-space: nowrap; }
+.sheet-row .val { flex: 1; }
+.sheet-name .val { font-size: 15pt; }
+.sheet table { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+.sheet th, .sheet td { border: 1px solid #000; padding: 1.5mm 2mm; font-size: 11pt; }
+.sheet th { background: #eee; font-weight: normal; font-size: 10pt; }
+.sheet td.c-price, .sheet td.c-qty { text-align: right; white-space: nowrap; }
+.sheet td { height: 8mm; }
+.sheet .sheet-totals { display: flex; justify-content: flex-end; gap: 10mm; padding: 2.5mm 1mm; border-bottom: 2px solid #000; font-size: 13pt; }
+.sheet .sheet-totals .total-price { font-weight: bold; font-size: 15pt; }
+.sheet .noshi-opt { padding: 0 2mm; }
+.sheet .noshi-opt.sel { border: 2px solid #000; border-radius: 50%; padding: 0.5mm 2mm; font-weight: bold; }
+.sheet-bottom { display: flex; gap: 5mm; margin-top: 3mm; }
+.sheet-bottom .sb-left { flex: 1; }
+.sheet-bottom .sb-right { width: 60mm; border: 1px solid #000; padding: 2mm; }
+.sheet-bottom .sb-right .lbl { font-size: 10pt; color: #333; }
+.sheet-bottom .sb-right .memo-box { min-height: 30mm; white-space: pre-wrap; }
+
 /* ===== テンキーモーダル ===== */
 #numpad-overlay {
   position: fixed; inset: 0; z-index: 100;

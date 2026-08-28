@@ -1,11 +1,17 @@
-/* A4承り表 印刷レイアウト（実装順4で本組み。ここでは骨組みのみ） */
+/* A4承り表 印刷レイアウト
+   承り表本体(.sheet)のスタイルは app.css にあり画面プレビューと共用。
+   ここでは「印刷時に承り表だけを紙に出す」制御を行う。 */
 @page { size: A4 portrait; margin: 10mm; }
 
 @media print {
-  /* 画面UIを全て非表示にし、承り表だけ印刷する */
   #app-header, .bottom-bar, #order-bottom-bar, #numpad-overlay { display: none !important; }
   .screen { display: none !important; }
   #screen-preview { display: block !important; height: auto; padding: 0; }
   #screen-preview h2 { display: none; }
   body { background: #fff; }
+  #preview-scroll { overflow: visible; background: none; padding: 0; border-radius: 0; }
+  #print-sheet {
+    width: auto; min-height: 0; margin: 0;
+    box-shadow: none; padding: 0;
+  }
 }

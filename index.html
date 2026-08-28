@@ -42,18 +42,95 @@
 <!-- 2.2 顧客・受渡情報画面 -->
 <main id="screen-customer" class="screen">
   <h2>お客様・受渡情報</h2>
-  <p class="placeholder">（実装順3で作成）</p>
+  <div id="customer-form">
+    <div class="form-row">
+      <label for="f-date">日付</label>
+      <input type="date" id="f-date">
+    </div>
+    <div class="form-row">
+      <label>受付</label>
+      <div class="form-field">
+        <div id="staff-btns" class="btn-group"></div>
+        <input type="text" id="f-staff" placeholder="担当者名">
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="f-name">御名前 <span class="req">必須</span></label>
+      <div class="form-field with-suffix">
+        <input type="text" id="f-name"><span class="suffix">様</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="f-address">御住所</label>
+      <input type="text" id="f-address">
+    </div>
+    <div class="form-row">
+      <label for="f-phone">電話番号 <span class="req">必須</span></label>
+      <input type="tel" id="f-phone" inputmode="numeric" placeholder="例: 0312345678">
+    </div>
+    <div class="form-row">
+      <label>商品内容メモ</label>
+      <div class="form-field" id="item-notes"></div>
+    </div>
+    <div class="form-row">
+      <label>受渡方法</label>
+      <div class="btn-group" id="delivery-toggle">
+        <button data-val="来店" class="toggle-btn active">御来店</button>
+        <button data-val="配送" class="toggle-btn">配送</button>
+      </div>
+    </div>
+    <div class="form-row" id="row-visit">
+      <label>御来店日時</label>
+      <div class="form-field">
+        <input type="date" id="f-visit-date">
+        <input type="time" id="f-visit-time" step="600">
+      </div>
+    </div>
+    <div class="form-row hidden" id="row-ship">
+      <label>発送日・着日</label>
+      <div class="form-field">
+        <span class="mini-label">発送日</span><input type="date" id="f-ship">
+        <span class="mini-label">着日</span><input type="date" id="f-arrive">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>熨斗</label>
+      <div class="form-field">
+        <div class="btn-group" id="noshi-toggle">
+          <button data-val="なし" class="toggle-btn active">なし</button>
+          <button data-val="内" class="toggle-btn">内</button>
+          <button data-val="外" class="toggle-btn">外</button>
+        </div>
+        <span class="mini-label">サイズ</span><input type="text" id="f-noshi-size" class="short">
+      </div>
+    </div>
+    <div class="form-row" id="row-omotegaki">
+      <label>表書き</label>
+      <div class="form-field">
+        <div class="btn-group" id="omotegaki-btns"></div>
+        <input type="text" id="f-omotegaki" placeholder="自由入力">
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="f-packaging">菓子・包材</label>
+      <input type="text" id="f-packaging">
+    </div>
+    <div class="form-row">
+      <label for="f-memo">備考</label>
+      <textarea id="f-memo" rows="3"></textarea>
+    </div>
+  </div>
   <div class="bottom-bar">
     <button class="btn-sub" data-goto="screen-order">◀ 戻る</button>
-    <button class="btn-main" data-goto="screen-preview">保存して印刷プレビューへ ▶</button>
+    <button id="btn-to-preview" class="btn-main">保存して印刷プレビューへ ▶</button>
   </div>
 </main>
 
 <!-- 2.3 印刷プレビュー画面 -->
 <main id="screen-preview" class="screen">
   <h2>印刷プレビュー</h2>
-  <div id="print-sheet">
-    <p class="placeholder">（実装順4で承り表レイアウトを作成）</p>
+  <div id="preview-scroll">
+    <div id="print-sheet"></div>
   </div>
   <div class="bottom-bar">
     <button class="btn-sub" data-goto="screen-customer">◀ 編集に戻る</button>

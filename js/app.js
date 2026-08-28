@@ -1,16 +1,37 @@
-// 画面制御・受注入力
+// 画面制御・受注入力・顧客情報・印刷プレビュー
 (() => {
   const state = {
     master: null,          // { categories, staff, products }
     currentCategory: null,
     items: [],             // { productId, name, price, qty, note }
+    info: {                // 顧客・受渡情報（フォームと同期）
+      date: "", staff: "", name: "", address: "", phone: "",
+      method: "来店", visitDate: "", visitTime: "",
+      shipDate: "", arriveDate: "",
+      noshiType: "なし", noshiSize: "", omotegaki: "",
+      packaging: "", memo: "",
+    },
   };
+
+  const OMOTEGAKI_PRESETS = ["御祝", "内祝", "御供", "志", "御中元", "御歳暮"];
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const todayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const fmtDateJa = (iso) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-").map(Number);
+    const w = "日月火水木金土"[new Date(y, m - 1, d).getDay()];
+    return `${y}年${m}月${d}日（${w}）`;
+  };
 
   /* ===== 画面遷移 ===== */
   function goto(screenId) {
+    if (screenId === "screen-customer") onEnterCustomer();
     document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
     $("#" + screenId).classList.add("active");
     document.querySelectorAll(".nav-btn").forEach((b) => {
@@ -82,7 +103,7 @@
         const priceLabel = p.price == null
           ? '<span class="p-price undecided">価格 手入力</span>'
           : `<span class="p-price">${yen(p.price)}</span>`;
-        b.innerHTML = `<span class="p-name">${p.name}</span>${priceLabel}`;
+        b.innerHTML = `<span class="p-name">${esc(p.name)}</span>${priceLabel}`;
         b.addEventListener("click", () => tapProduct(p));
         grid.appendChild(b);
       });
@@ -132,13 +153,20 @@
     }
   }
 
+  function totals() {
+    return {
+      qty: state.items.reduce((s, it) => s + it.qty, 0),
+      price: state.items.reduce((s, it) => s + it.price * it.qty, 0),
+    };
+  }
+
   function renderDetails() {
     const ul = $("#detail-list");
     ul.innerHTML = "";
     state.items.forEach((it) => {
       const li = document.createElement("li");
       li.innerHTML =
-        `<span class="d-name">${it.name}</span>` +
+        `<span class="d-name">${esc(it.name)}</span>` +
         `<span class="d-price">${yen(it.price)}</span>` +
         `<span class="d-qty">${it.qty}</span>` +
         `<span class="d-sub">${yen(it.price * it.qty)}</span>`;
@@ -164,10 +192,9 @@
       ul.appendChild(li);
     });
 
-    const totalQty = state.items.reduce((s, it) => s + it.qty, 0);
-    const totalPrice = state.items.reduce((s, it) => s + it.price * it.qty, 0);
-    $("#total-qty").textContent = totalQty;
-    $("#total-price").textContent = yen(totalPrice);
+    const t = totals();
+    $("#total-qty").textContent = t.qty;
+    $("#total-price").textContent = yen(t.price);
   }
 
   $("#btn-clear-order").addEventListener("click", () => {
@@ -178,21 +205,204 @@
     }
   });
 
+  /* ===== 顧客・受渡情報フォーム ===== */
+  function bindText(id, key) {
+    $(id).addEventListener("input", (e) => { state.info[key] = e.target.value; });
+  }
+
+  function makeToggle(containerSel, onChange) {
+    const wrap = $(containerSel);
+    wrap.addEventListener("click", (e) => {
+      const btn = e.target.closest(".toggle-btn");
+      if (!btn) return;
+      wrap.querySelectorAll(".toggle-btn").forEach((b) => b.classList.toggle("active", b === btn));
+      onChange(btn.dataset.val);
+    });
+  }
+
+  function initCustomerForm() {
+    bindText("#f-staff", "staff");
+    bindText("#f-name", "name");
+    bindText("#f-address", "address");
+    bindText("#f-phone", "phone");
+    bindText("#f-noshi-size", "noshiSize");
+    bindText("#f-omotegaki", "omotegaki");
+    bindText("#f-packaging", "packaging");
+    bindText("#f-memo", "memo");
+    $("#f-date").addEventListener("input", (e) => { state.info.date = e.target.value; });
+    $("#f-visit-date").addEventListener("input", (e) => { state.info.visitDate = e.target.value; });
+    $("#f-visit-time").addEventListener("input", (e) => { state.info.visitTime = e.target.value; });
+    $("#f-ship").addEventListener("input", (e) => { state.info.shipDate = e.target.value; });
+    $("#f-arrive").addEventListener("input", (e) => { state.info.arriveDate = e.target.value; });
+
+    makeToggle("#delivery-toggle", (val) => {
+      state.info.method = val;
+      $("#row-visit").classList.toggle("hidden", val !== "来店");
+      $("#row-ship").classList.toggle("hidden", val !== "配送");
+    });
+    makeToggle("#noshi-toggle", (val) => { state.info.noshiType = val; });
+
+    // 担当者ボタン（マスタから）
+    const sb = $("#staff-btns");
+    state.master.staff.forEach((name) => {
+      const b = document.createElement("button");
+      b.className = "toggle-btn";
+      b.textContent = name;
+      b.addEventListener("click", () => {
+        state.info.staff = name;
+        $("#f-staff").value = name;
+        sb.querySelectorAll(".toggle-btn").forEach((x) => x.classList.toggle("active", x === b));
+      });
+      sb.appendChild(b);
+    });
+
+    // 表書きプリセットボタン
+    const ob = $("#omotegaki-btns");
+    OMOTEGAKI_PRESETS.forEach((word) => {
+      const b = document.createElement("button");
+      b.className = "toggle-btn";
+      b.textContent = word;
+      b.addEventListener("click", () => {
+        state.info.omotegaki = word;
+        $("#f-omotegaki").value = word;
+        ob.querySelectorAll(".toggle-btn").forEach((x) => x.classList.toggle("active", x === b));
+      });
+      ob.appendChild(b);
+    });
+  }
+
+  function onEnterCustomer() {
+    if (!state.info.date) {
+      state.info.date = todayStr();
+      $("#f-date").value = state.info.date;
+    }
+    // 明細行ごとの商品内容メモ
+    const wrap = $("#item-notes");
+    wrap.innerHTML = "";
+    if (state.items.length === 0) {
+      wrap.innerHTML = '<span class="none">（商品が選ばれていません）</span>';
+      return;
+    }
+    state.items.forEach((it) => {
+      const row = document.createElement("div");
+      row.className = "item-note-row";
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "in-name";
+      nameSpan.textContent = it.name;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = it.note;
+      input.placeholder = "詰合せの中身など";
+      input.addEventListener("input", () => { it.note = input.value; });
+      row.appendChild(nameSpan);
+      row.appendChild(input);
+      wrap.appendChild(row);
+    });
+  }
+
+  /* ===== 印刷プレビュー（承り表） ===== */
+  function renderSheet() {
+    const i = state.info;
+    const t = totals();
+    const ITEM_ROWS = 10; // 常に10行（空行は手書き追記用）
+
+    let rows = "";
+    for (let r = 0; r < ITEM_ROWS; r++) {
+      const it = state.items[r];
+      rows += it
+        ? `<tr><td>${esc(it.name)}</td><td class="c-price">${yen(it.price)}</td><td class="c-qty">${it.qty}</td><td>${esc(it.note)}</td></tr>`
+        : `<tr><td></td><td class="c-price"></td><td class="c-qty"></td><td></td></tr>`;
+    }
+    const overflow = state.items.length > ITEM_ROWS
+      ? `<div style="color:#c00;font-size:10pt;">※明細が${state.items.length}件あり、${ITEM_ROWS}行に入り切りません</div>` : "";
+
+    const noshiOpts = ["内", "外"].map((v) =>
+      `<span class="noshi-opt${i.noshiType === v ? " sel" : ""}">${v}</span>`).join("・");
+
+    const visitStr = i.method === "来店"
+      ? `${fmtDateJa(i.visitDate)} ${esc(i.visitTime)}` : "";
+    const shipStr = i.method === "配送" ? fmtDateJa(i.shipDate) : "";
+    const arriveStr = i.method === "配送" ? fmtDateJa(i.arriveDate) : "";
+
+    $("#print-sheet").innerHTML = `
+    <div class="sheet">
+      <div class="sheet-header">
+        <span class="sheet-title">承り表</span>
+        <span class="sheet-date"><span class="lbl">日付</span> ${fmtDateJa(i.date || todayStr())}</span>
+        <span><span class="lbl">受付</span> ${esc(i.staff)}</span>
+      </div>
+      <div class="sheet-row sheet-name"><span class="lbl">御名前</span><span class="val">${esc(i.name)}</span><span>様</span></div>
+      <div class="sheet-row"><span class="lbl">御住所</span><span class="val">${esc(i.address)}</span></div>
+      <div class="sheet-row"><span class="lbl">電話番号</span><span class="val">${esc(i.phone)}</span></div>
+      <table>
+        <tr><th style="width:40%">商品名（箱種類）</th><th style="width:18%">価格（税込）</th><th style="width:10%">個数</th><th>商品内容</th></tr>
+        ${rows}
+      </table>
+      ${overflow}
+      <div class="sheet-totals">
+        <span>トータル数 <b>${t.qty}</b></span>
+        <span class="total-price">合計（税込） ${yen(t.price)}</span>
+      </div>
+      <div class="sheet-row"><span class="lbl">御来店日時</span><span class="val">${visitStr}</span></div>
+      <div class="sheet-row"><span class="lbl">配送</span><span class="lbl">発送日</span><span class="val">${shipStr}</span><span class="lbl">着日</span><span class="val">${arriveStr}</span></div>
+      <div class="sheet-bottom">
+        <div class="sb-left">
+          <div class="sheet-row"><span class="lbl">熨斗</span><span>${noshiOpts}</span><span class="lbl">サイズ</span><span class="val">${esc(i.noshiSize)}</span></div>
+          <div class="sheet-row"><span class="lbl">表書き</span><span class="val">${esc(i.omotegaki)}</span></div>
+          <div class="sheet-row"><span class="lbl">菓子・包材</span><span class="val">${esc(i.packaging)}</span></div>
+        </div>
+        <div class="sb-right"><span class="lbl">備考</span><div class="memo-box">${esc(i.memo)}</div></div>
+      </div>
+    </div>`;
+  }
+
+  $("#btn-to-preview").addEventListener("click", () => {
+    const missing = [];
+    if (!state.info.name.trim()) missing.push("御名前");
+    if (!state.info.phone.trim()) missing.push("電話番号");
+    if (missing.length) { alert(missing.join("・") + " を入力してください"); return; }
+    renderSheet();
+    goto("screen-preview");
+  });
+
+  $("#btn-print").addEventListener("click", () => window.print());
+  $("#btn-save-only").addEventListener("click", () => {
+    alert("保存機能は次の段階（実装順5）で追加します");
+  });
+
   /* ===== 起動 ===== */
   master.load().then((m) => {
     state.master = m;
     state.currentCategory = m.categories[0];
-    // ?demo=1 でダミー明細を投入（スクリーンショット・動作確認用）
+    initCustomerForm();
+    // ?demo=1 でダミーデータを投入（スクリーンショット・動作確認用）
     if (location.search.includes("demo")) {
       state.items = [
         { productId: "p_101", name: "最中 5個入箱", price: 1040, qty: 2, note: "" },
-        { productId: "p_002", name: "詰合せ（中）", price: 2500, qty: 1, note: "" },
+        { productId: "p_002", name: "詰合せ（中）", price: 2500, qty: 1, note: "最中3・どら焼き3・羊羹1" },
         { productId: "p_201", name: "どら焼き", price: 180, qty: 10, note: "" },
       ];
       state.currentCategory = "箱";
+      Object.assign(state.info, {
+        name: "山田 花子", phone: "0312345678", staff: "担当A",
+        visitDate: todayStr(), visitTime: "10:00",
+        noshiType: "内", omotegaki: "御祝", memo: "紙袋2枚",
+      });
+      ["#f-name", "#f-phone", "#f-staff"].forEach((id, k) => {
+        $(id).value = [state.info.name, state.info.phone, state.info.staff][k];
+      });
+      $("#f-visit-date").value = state.info.visitDate;
+      $("#f-visit-time").value = state.info.visitTime;
+      $("#f-memo").value = state.info.memo;
     }
     renderTabs();
     renderGrid();
     renderDetails();
+    // ?screen=screen-xxx で指定画面を直接開く（スクリーンショット用）
+    const scr = new URLSearchParams(location.search).get("screen");
+    if (scr && $("#" + scr)) {
+      if (scr === "screen-preview") renderSheet();
+      goto(scr);
+    }
   });
 })();
