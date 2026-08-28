@@ -182,6 +182,15 @@
   master.load().then((m) => {
     state.master = m;
     state.currentCategory = m.categories[0];
+    // ?demo=1 でダミー明細を投入（スクリーンショット・動作確認用）
+    if (location.search.includes("demo")) {
+      state.items = [
+        { productId: "p_101", name: "最中 5個入箱", price: 1040, qty: 2, note: "" },
+        { productId: "p_002", name: "詰合せ（中）", price: 2500, qty: 1, note: "" },
+        { productId: "p_201", name: "どら焼き", price: 180, qty: 10, note: "" },
+      ];
+      state.currentCategory = "箱";
+    }
     renderTabs();
     renderGrid();
     renderDetails();
