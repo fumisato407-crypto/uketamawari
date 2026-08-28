@@ -190,11 +190,14 @@ body.customer-mode #app-header nav { display: none; }
 .sheet .sheet-totals .total-price { font-weight: bold; font-size: 15pt; }
 .sheet .noshi-opt { padding: 0 2mm; }
 .sheet .noshi-opt.sel { border: 2px solid #000; border-radius: 50%; padding: 0.5mm 2mm; font-weight: bold; }
-.sheet-bottom { display: flex; gap: 5mm; margin-top: 3mm; }
+.sheet-bottom { display: flex; gap: 5mm; margin-top: 3mm; align-items: stretch; }
 .sheet-bottom .sb-left { flex: 1; }
-.sheet-bottom .sb-right { width: 85mm; border: 1px solid #000; padding: 2mm; }
+.sheet-bottom .sb-right {
+  width: 85mm; border: 1px solid #000; padding: 2mm;
+  display: flex; flex-direction: column;
+}
 .sheet-bottom .sb-right .lbl { font-size: 10pt; color: #333; }
-.sheet-bottom .sb-right .memo-box { min-height: 30mm; white-space: pre-wrap; }
+.sheet-bottom .sb-right .memo-box { flex: 1; min-height: 100mm; white-space: pre-wrap; }
 
 /* ===== スマホ縦画面（確認用）: 縦積みレイアウトに切替 =====
    本番のタブレット横持ちでは従来の2ペイン表示のまま */

@@ -349,10 +349,10 @@
         <span>トータル数 <b>${t.qty}</b></span>
         <span class="total-price">合計（税込） ${yen(t.price)}</span>
       </div>
-      <div class="sheet-row"><span class="lbl">御来店日時</span><span class="val">${visitStr}</span></div>
-      <div class="sheet-row"><span class="lbl">配送</span><span class="lbl">発送日</span><span class="val">${shipStr}</span><span class="lbl">着日</span><span class="val">${arriveStr}</span></div>
       <div class="sheet-bottom">
         <div class="sb-left">
+          <div class="sheet-row"><span class="lbl">御来店日時</span><span class="val">${visitStr}</span></div>
+          <div class="sheet-row"><span class="lbl">配送</span><span class="lbl">発送日</span><span class="val">${shipStr}</span><span class="lbl">着日</span><span class="val">${arriveStr}</span></div>
           <div class="sheet-row"><span class="lbl">熨斗</span><span>${noshiOpts}</span><span class="lbl">サイズ</span><span class="val">${esc(i.noshiSize)}</span></div>
           <div class="sheet-row"><span class="lbl">表書き</span><span class="val">${esc(i.omotegaki)}</span></div>
           <div class="sheet-row"><span class="lbl">備考</span><span class="val">${esc(i.memo)}</span></div>
