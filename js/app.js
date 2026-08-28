@@ -32,6 +32,9 @@
   /* ===== 画面遷移 ===== */
   function goto(screenId) {
     if (screenId === "screen-customer") onEnterCustomer();
+    // お客様入力画面の間はタブレットをお客様に渡すため、
+    // 他画面（予約一覧・設定）へ行けるメニューを隠す
+    document.body.classList.toggle("customer-mode", screenId === "screen-customer");
     document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
     $("#" + screenId).classList.add("active");
     document.querySelectorAll(".nav-btn").forEach((b) => {

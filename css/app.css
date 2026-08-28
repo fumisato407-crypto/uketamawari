@@ -105,7 +105,8 @@ main.screen { flex-direction: row; }
 /* 下部バー（共通） */
 .bottom-bar { display: flex; gap: 10px; margin-top: auto; padding-top: 12px; }
 
-/* ===== 顧客・受渡情報フォーム ===== */
+/* ===== 顧客・受渡情報フォーム（お客様に渡して入力してもらう画面） ===== */
+body.customer-mode #app-header nav { display: none; }
 #customer-form { flex: 1; overflow-y: auto; max-width: 860px; }
 .form-row {
   display: flex; align-items: center; gap: 12px;
