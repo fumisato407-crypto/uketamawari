@@ -574,10 +574,14 @@
       return;
     }
     // ?screen=screen-xxx で指定画面を直接開く（スクリーンショット用）
-    const scr = new URLSearchParams(location.search).get("screen");
+    const params = new URLSearchParams(location.search);
+    const scr = params.get("screen");
     if (scr && $("#" + scr)) {
       if (scr === "screen-preview") renderSheet();
       goto(scr);
     }
+    // ?tap=ボタンID でそのボタンを自動タップ（ボタン経由の動作確認用）
+    const tap = params.get("tap");
+    if (tap && $("#" + tap)) setTimeout(() => $("#" + tap).click(), 100);
   });
 })();
