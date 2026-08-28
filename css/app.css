@@ -190,6 +190,47 @@ body.customer-mode #app-header nav { display: none; }
 .sheet-bottom .sb-right .lbl { font-size: 10pt; color: #333; }
 .sheet-bottom .sb-right .memo-box { min-height: 30mm; white-space: pre-wrap; }
 
+/* ===== スマホ縦画面（確認用）: 縦積みレイアウトに切替 =====
+   本番のタブレット横持ちでは従来の2ペイン表示のまま */
+@media screen and (max-width: 700px) {
+  #app-header { height: 48px; padding: 0 8px; }
+  #app-header h1 { font-size: 15px; }
+  .nav-btn { min-height: 38px; padding: 0 10px; font-size: 14px; }
+  .screen { height: calc(100% - 48px); }
+
+  /* 受注入力: 上=商品選び / 下=明細・合計 */
+  main#screen-order.active { flex-direction: column-reverse; }
+  #detail-pane {
+    width: 100%; min-width: 0; flex: 0 0 auto;
+    border-right: none; border-top: 2px solid #ccc;
+  }
+  #detail-pane h2 { display: none; }
+  #detail-list { flex: 0 1 auto; max-height: 20vh; }
+  #detail-list li { min-height: 44px; font-size: 15px; grid-template-columns: 1fr 64px 40px 72px; }
+  #detail-summary { padding: 4px 12px; }
+  .sum-row { font-size: 15px; padding: 2px 0; }
+  .sum-row.total { font-size: 20px; }
+  #order-bottom-bar { padding: 8px; }
+  .btn-main, .btn-sub { min-height: 48px; font-size: 17px; }
+  #product-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 8px; }
+  .product-btn { min-height: 84px; font-size: 15px; }
+  .cat-tab { min-height: 44px; padding: 0 14px; font-size: 16px; }
+
+  /* フォーム: ラベルを上に積む */
+  #screen-customer.active, #screen-preview.active,
+  #screen-list.active, #screen-master.active { padding: 10px; }
+  .form-row { flex-direction: column; align-items: stretch; gap: 6px; }
+  .form-row > label { width: auto; }
+
+  /* 承り表プレビュー: 縮小表示（印刷には影響しない） */
+  #preview-scroll { padding: 8px; }
+  #print-sheet { zoom: 0.5; }
+
+  /* 予約一覧 */
+  #order-list .o-actions { width: 100%; }
+  #order-list .o-actions button { flex: 1; }
+}
+
 /* ===== テンキーモーダル ===== */
 #numpad-overlay {
   position: fixed; inset: 0; z-index: 100;
