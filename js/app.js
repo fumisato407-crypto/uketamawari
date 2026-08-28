@@ -330,7 +330,7 @@
     const shipStr = i.method === "配送" ? fmtDateJa(i.shipDate) : "";
     const arriveStr = i.method === "配送" ? fmtDateJa(i.arriveDate) : "";
 
-    $("#print-sheet").innerHTML = `
+    const sheetHTML = `
     <div class="sheet">
       <div class="sheet-header">
         <span class="sheet-title">承り表</span>
@@ -360,6 +360,14 @@
         <div class="sb-right"><span class="lbl">備考</span><div class="memo-box">${esc(i.memo)}</div></div>
       </div>
     </div>`;
+
+    // A4横1枚に同じ承り表を左右2面（お店控え・お客様控え。中央は切り取り線）
+    $("#print-sheet").innerHTML =
+      `<div class="sheet-pair">
+         <div class="sheet-copy">${sheetHTML}</div>
+         <div class="cut-line"></div>
+         <div class="sheet-copy">${sheetHTML}</div>
+       </div>`;
   }
 
   $("#btn-to-preview").addEventListener("click", () => {

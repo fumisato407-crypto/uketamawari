@@ -1,7 +1,8 @@
 /* A4承り表 印刷レイアウト
    承り表本体(.sheet)のスタイルは app.css にあり画面プレビューと共用。
    ここでは「印刷時に承り表だけを紙に出す」制御を行う。 */
-@page { size: A4 portrait; margin: 10mm; }
+/* A4横1枚に同じ承り表を左右2面 */
+@page { size: A4 landscape; margin: 8mm; }
 
 @media print {
   #app-header, .bottom-bar, #order-bottom-bar, #numpad-overlay { display: none !important; }

@@ -161,10 +161,16 @@ body.customer-mode #app-header nav { display: none; }
 /* ===== 印刷プレビュー（画面表示） ===== */
 #preview-scroll { flex: 1; overflow: auto; background: #888; padding: 16px; border-radius: 8px; }
 #print-sheet {
-  width: 190mm; min-height: 277mm; margin: 0 auto;
+  width: 281mm; min-height: 194mm; margin: 0 auto;
   background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.4);
-  padding: 8mm;
+  padding: 5mm;
 }
+
+/* A4横に同じ承り表を左右2面（各面はA5相当） */
+.sheet-pair { display: flex; align-items: stretch; }
+.sheet-pair .sheet-copy { width: 50%; padding: 0 3mm; }
+.sheet-pair .sheet-copy .sheet { zoom: 0.66; }
+.sheet-pair .cut-line { border-left: 1px dashed #999; flex-shrink: 0; }
 
 /* ===== 承り表（A4・画面と印刷で共用） ===== */
 .sheet { font-size: 12pt; color: #000; user-select: text; }
@@ -224,7 +230,7 @@ body.customer-mode #app-header nav { display: none; }
 
   /* 承り表プレビュー: 縮小表示（印刷には影響しない） */
   #preview-scroll { padding: 8px; }
-  #print-sheet { zoom: 0.5; }
+  #print-sheet { zoom: 0.42; }
 
   /* 予約一覧 */
   #order-list .o-actions { width: 100%; }
