@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>予約承り表</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+
+<!-- ヘッダー（全画面共通） -->
+<header id="app-header">
+  <h1>予約承り表</h1>
+  <nav>
+    <button data-goto="screen-order" class="nav-btn active">受注入力</button>
+    <button data-goto="screen-list" class="nav-btn">予約一覧</button>
+    <button data-goto="screen-master" class="nav-btn">設定</button>
+  </nav>
+</header>
+
+<!-- 2.1 受注入力画面 -->
+<main id="screen-order" class="screen active">
+  <section id="detail-pane">
+    <h2>明細</h2>
+    <ul id="detail-list"></ul>
+    <div id="detail-summary">
+      <div class="sum-row"><span>トータル数</span><span id="total-qty">0</span></div>
+      <div class="sum-row total"><span>合計（税込）</span><span id="total-price">¥0</span></div>
+    </div>
+    <div id="order-bottom-bar">
+      <button id="btn-clear-order" class="btn-sub">クリア</button>
+      <button id="btn-to-customer" class="btn-main">お客様情報へ ▶</button>
+    </div>
+  </section>
+  <section id="product-pane">
+    <div id="category-tabs"></div>
+    <div id="product-grid"></div>
+  </section>
+</main>
+
+<!-- 2.2 顧客・受渡情報画面 -->
+<main id="screen-customer" class="screen">
+  <h2>お客様・受渡情報</h2>
+  <p class="placeholder">（実装順3で作成）</p>
+  <div class="bottom-bar">
+    <button class="btn-sub" data-goto="screen-order">◀ 戻る</button>
+    <button class="btn-main" data-goto="screen-preview">保存して印刷プレビューへ ▶</button>
+  </div>
+</main>
+
+<!-- 2.3 印刷プレビュー画面 -->
+<main id="screen-preview" class="screen">
+  <h2>印刷プレビュー</h2>
+  <div id="print-sheet">
+    <p class="placeholder">（実装順4で承り表レイアウトを作成）</p>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn-sub" data-goto="screen-customer">◀ 編集に戻る</button>
+    <button id="btn-save-only" class="btn-sub">保存のみ</button>
+    <button id="btn-print" class="btn-main">印刷</button>
+  </div>
+</main>
+
+<!-- 2.4 予約一覧画面 -->
+<main id="screen-list" class="screen">
+  <h2>予約一覧</h2>
+  <p class="placeholder">（実装順5で作成）</p>
+</main>
+
+<!-- 2.5 商品マスタ編集画面 -->
+<main id="screen-master" class="screen">
+  <h2>設定・商品マスタ編集</h2>
+  <p class="placeholder">（実装順6で作成）</p>
+</main>
+
+<!-- 数量・単価入力テンキー（モーダル） -->
+<div id="numpad-overlay" class="hidden">
+  <div id="numpad">
+    <div id="numpad-title">個数</div>
+    <div id="numpad-display">0</div>
+    <div id="numpad-keys">
+      <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
+      <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
+      <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
+      <button data-key="C" class="key-c">C</button><button data-key="0">0</button><button data-key="00">00</button>
+    </div>
+    <div id="numpad-actions">
+      <button id="numpad-cancel" class="btn-sub">やめる</button>
+      <button id="numpad-ok" class="btn-main">決定</button>
+    </div>
+  </div>
+</div>
+
+<script src="data/products.sample.js"></script>
+<script src="js/db.js"></script>
+<script src="js/master.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+/* A4承り表 印刷レイアウト（実装順4で本組み。ここでは骨組みのみ） */
+@page { size: A4 portrait; margin: 10mm; }
+
+@media print {
+  /* 画面UIを全て非表示にし、承り表だけ印刷する */
+  #app-header, .bottom-bar, #order-bottom-bar, #numpad-overlay { display: none !important; }
+  .screen { display: none !important; }
+  #screen-preview { display: block !important; height: auto; padding: 0; }
+  #screen-preview h2 { display: none; }
+  body { background: #fff; }
+}
