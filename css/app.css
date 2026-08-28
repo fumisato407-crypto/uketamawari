@@ -138,6 +138,26 @@ body.customer-mode #app-header nav { display: none; }
 .item-note-row .in-name { width: 180px; flex-shrink: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #item-notes .none { color: #999; font-size: 15px; }
 
+/* ===== 予約一覧 ===== */
+#order-list { list-style: none; margin: 14px 0 0; padding: 0; flex: 1; overflow-y: auto; }
+#order-list li {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: #fff; border: 1px solid #ddd; border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 10px;
+}
+#order-list .o-main { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 2px; }
+#order-list .o-date { font-weight: bold; font-size: 17px; }
+#order-list .o-date .o-method { font-size: 14px; color: #666; font-weight: normal; margin-left: 8px; }
+#order-list .o-sub { font-size: 15px; color: #555; }
+#order-list .o-total { font-size: 18px; font-weight: bold; white-space: nowrap; }
+#order-list .o-status { font-size: 14px; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+#order-list .o-status.st-open { background: #fdebd0; color: #935e0c; }
+#order-list .o-status.st-done { background: #d5e8d4; color: #2e6130; }
+#order-list .o-actions { display: flex; gap: 6px; }
+#order-list .o-actions button { min-height: 48px; font-size: 15px; padding: 0 12px; border: none; border-radius: 8px; background: #ece7de; }
+#order-list .o-actions .o-del { background: #f3c6c0; }
+#order-list .none { color: #999; padding: 24px; text-align: center; border: none; background: none; }
+
 /* ===== 印刷プレビュー（画面表示） ===== */
 #preview-scroll { flex: 1; overflow: auto; background: #888; padding: 16px; border-radius: 8px; }
 #print-sheet {

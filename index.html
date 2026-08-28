@@ -142,7 +142,12 @@
 <!-- 2.4 予約一覧画面 -->
 <main id="screen-list" class="screen">
   <h2>予約一覧</h2>
-  <p class="placeholder">（実装順5で作成）</p>
+  <div class="btn-group" id="list-filter">
+    <button data-val="all" class="toggle-btn active">全て</button>
+    <button data-val="undelivered" class="toggle-btn">未受渡</button>
+    <button data-val="delivered" class="toggle-btn">受渡済</button>
+  </div>
+  <ul id="order-list"></ul>
 </main>
 
 <!-- 2.5 商品マスタ編集画面 -->

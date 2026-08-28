@@ -11,6 +11,9 @@
       noshiType: "なし", noshiSize: "", omotegaki: "",
       packaging: "", memo: "",
     },
+    currentOrderId: null,  // 保存済みの予約を編集中ならそのID（上書き保存用）
+    orderMeta: null,       // { createdAt, status } 既存予約の引き継ぎ
+    listFilter: "all",
   };
 
   const OMOTEGAKI_PRESETS = ["御祝", "内祝", "御供", "志", "御中元", "御歳暮"];
@@ -32,6 +35,7 @@
   /* ===== 画面遷移 ===== */
   function goto(screenId) {
     if (screenId === "screen-customer") onEnterCustomer();
+    if (screenId === "screen-list") renderOrderList();
     // お客様入力画面の間はタブレットをお客様に渡すため、
     // 他画面（予約一覧・設定）へ行けるメニューを隠す
     document.body.classList.toggle("customer-mode", screenId === "screen-customer");
@@ -201,10 +205,9 @@
   }
 
   $("#btn-clear-order").addEventListener("click", () => {
-    if (state.items.length === 0) return;
-    if (confirm("明細をすべてクリアしますか？")) {
-      state.items = [];
-      renderDetails();
+    if (state.items.length === 0 && !state.currentOrderId) return;
+    if (confirm("入力内容をすべてクリアして新しい予約を始めますか？")) {
+      resetOrder();
     }
   });
 
@@ -368,9 +371,173 @@
     goto("screen-preview");
   });
 
-  $("#btn-print").addEventListener("click", () => window.print());
-  $("#btn-save-only").addEventListener("click", () => {
-    alert("保存機能は次の段階（実装順5）で追加します");
+  /* ===== 予約の保存・一覧 ===== */
+  function pad2(n) { return String(n).padStart(2, "0"); }
+
+  async function nextOrderId() {
+    const prefix = "o_" + (state.info.date || todayStr()).replace(/-/g, "") + "_";
+    const all = await db.getAll("orders");
+    const seq = all.filter((o) => o.id.startsWith(prefix)).length + 1;
+    return prefix + String(seq).padStart(3, "0");
+  }
+
+  function buildOrder() {
+    const i = state.info;
+    const t = totals();
+    return {
+      id: state.currentOrderId,
+      createdAt: state.orderMeta?.createdAt || new Date().toISOString(),
+      date: i.date || todayStr(),
+      staff: i.staff,
+      customer: { name: i.name, address: i.address, phone: i.phone },
+      items: state.items.map((it) => ({ productId: it.productId, name: it.name, price: it.price, qty: it.qty, note: it.note })),
+      total: t.price,
+      totalQty: t.qty,
+      delivery: {
+        method: i.method,
+        visitAt: i.method === "来店" && i.visitDate ? i.visitDate + (i.visitTime ? "T" + i.visitTime : "") : null,
+        shipDate: i.method === "配送" ? (i.shipDate || null) : null,
+        arriveDate: i.method === "配送" ? (i.arriveDate || null) : null,
+      },
+      noshi: { type: i.noshiType, size: i.noshiSize, omotegaki: i.omotegaki },
+      packaging: i.packaging,
+      memo: i.memo,
+      status: state.orderMeta?.status || "受付済",
+    };
+  }
+
+  async function saveOrder() {
+    if (!state.currentOrderId) state.currentOrderId = await nextOrderId();
+    const order = buildOrder();
+    await db.put("orders", order);
+    state.orderMeta = { createdAt: order.createdAt, status: order.status };
+    return order;
+  }
+
+  function resetOrder() {
+    state.items = [];
+    state.currentOrderId = null;
+    state.orderMeta = null;
+    state.info = {
+      date: "", staff: "", name: "", address: "", phone: "",
+      method: "来店", visitDate: "", visitTime: "",
+      shipDate: "", arriveDate: "",
+      noshiType: "なし", noshiSize: "", omotegaki: "",
+      packaging: "", memo: "",
+    };
+    syncFormFromInfo();
+    renderDetails();
+  }
+
+  // state.info の値をフォームの見た目（入力欄・トグルのON状態）へ反映
+  function syncFormFromInfo() {
+    const i = state.info;
+    const setVal = (id, v) => { $(id).value = v || ""; };
+    setVal("#f-date", i.date); setVal("#f-staff", i.staff);
+    setVal("#f-name", i.name); setVal("#f-address", i.address); setVal("#f-phone", i.phone);
+    setVal("#f-visit-date", i.visitDate); setVal("#f-visit-time", i.visitTime);
+    setVal("#f-ship", i.shipDate); setVal("#f-arrive", i.arriveDate);
+    setVal("#f-noshi-size", i.noshiSize); setVal("#f-omotegaki", i.omotegaki);
+    setVal("#f-packaging", i.packaging); setVal("#f-memo", i.memo);
+    const setToggle = (sel, val) => {
+      document.querySelectorAll(sel + " .toggle-btn").forEach((b) =>
+        b.classList.toggle("active", b.dataset.val === val));
+    };
+    setToggle("#delivery-toggle", i.method);
+    setToggle("#noshi-toggle", i.noshiType);
+    $("#row-visit").classList.toggle("hidden", i.method !== "来店");
+    $("#row-ship").classList.toggle("hidden", i.method !== "配送");
+    document.querySelectorAll("#staff-btns .toggle-btn").forEach((b) =>
+      b.classList.toggle("active", b.textContent === i.staff));
+    document.querySelectorAll("#omotegaki-btns .toggle-btn").forEach((b) =>
+      b.classList.toggle("active", b.textContent === i.omotegaki));
+  }
+
+  // 保存済み予約を編集用に読み込む
+  function loadOrder(o) {
+    state.currentOrderId = o.id;
+    state.orderMeta = { createdAt: o.createdAt, status: o.status };
+    state.items = o.items.map((it) => ({ ...it }));
+    const [vd, vt] = (o.delivery.visitAt || "").split("T");
+    state.info = {
+      date: o.date, staff: o.staff,
+      name: o.customer.name, address: o.customer.address, phone: o.customer.phone,
+      method: o.delivery.method, visitDate: vd || "", visitTime: vt || "",
+      shipDate: o.delivery.shipDate || "", arriveDate: o.delivery.arriveDate || "",
+      noshiType: o.noshi.type, noshiSize: o.noshi.size, omotegaki: o.noshi.omotegaki,
+      packaging: o.packaging, memo: o.memo,
+    };
+    syncFormFromInfo();
+    renderDetails();
+  }
+
+  // 受渡日（来店なら来店日・配送なら着日）で並べる
+  const deliveryDateOf = (o) => o.delivery.method === "来店"
+    ? (o.delivery.visitAt || "")
+    : (o.delivery.arriveDate || o.delivery.shipDate || "");
+
+  async function renderOrderList() {
+    const ul = $("#order-list");
+    const orders = (await db.getAll("orders"))
+      .filter((o) => state.listFilter === "all"
+        || (state.listFilter === "undelivered" ? o.status === "受付済" : o.status === "受渡済"))
+      .sort((a, b) => (deliveryDateOf(a) || "9999").localeCompare(deliveryDateOf(b) || "9999"));
+    ul.innerHTML = "";
+    if (orders.length === 0) {
+      ul.innerHTML = '<li class="none">予約はありません</li>';
+      return;
+    }
+    orders.forEach((o) => {
+      const li = document.createElement("li");
+      const dd = deliveryDateOf(o);
+      const [d, tm] = dd.split("T");
+      const dateLabel = d ? `${fmtDateJa(d)}${tm ? " " + tm : ""}` : "受渡日未定";
+      li.innerHTML =
+        `<div class="o-main">
+           <span class="o-date">${dateLabel}<span class="o-method">${o.delivery.method}</span></span>
+           <span class="o-sub">${esc(o.customer.name)} 様　${esc(o.customer.phone)}</span>
+         </div>
+         <span class="o-total">${yen(o.total)}</span>
+         <span class="o-status ${o.status === "受付済" ? "st-open" : "st-done"}">${o.status}</span>
+         <div class="o-actions">
+           <button class="o-open">開く・再印刷</button>
+           <button class="o-toggle">${o.status === "受付済" ? "受渡済にする" : "受付済に戻す"}</button>
+           <button class="o-del">削除</button>
+         </div>`;
+      li.querySelector(".o-open").addEventListener("click", () => {
+        loadOrder(o);
+        renderSheet();
+        goto("screen-preview");
+      });
+      li.querySelector(".o-toggle").addEventListener("click", async () => {
+        o.status = o.status === "受付済" ? "受渡済" : "受付済";
+        await db.put("orders", o);
+        renderOrderList();
+      });
+      li.querySelector(".o-del").addEventListener("click", async () => {
+        if (!confirm(`${o.customer.name} 様の予約（${yen(o.total)}）を削除しますか？`)) return;
+        await db.delete("orders", o.id);
+        if (state.currentOrderId === o.id) resetOrder();
+        renderOrderList();
+      });
+      ul.appendChild(li);
+    });
+  }
+
+  makeToggle("#list-filter", (val) => {
+    state.listFilter = val;
+    renderOrderList();
+  });
+
+  $("#btn-print").addEventListener("click", async () => {
+    await saveOrder();
+    window.print();
+  });
+  $("#btn-save-only").addEventListener("click", async () => {
+    await saveOrder();
+    alert("保存しました");
+    resetOrder();
+    goto("screen-order");
   });
 
   /* ===== 起動 ===== */
@@ -401,6 +568,11 @@
     renderTabs();
     renderGrid();
     renderDetails();
+    // ?demo=1&selftest=1 でデモ予約を保存→一覧表示（保存機能の動作確認用）
+    if (location.search.includes("selftest")) {
+      saveOrder().then(() => goto("screen-list"));
+      return;
+    }
     // ?screen=screen-xxx で指定画面を直接開く（スクリーンショット用）
     const scr = new URLSearchParams(location.search).get("screen");
     if (scr && $("#" + scr)) {
