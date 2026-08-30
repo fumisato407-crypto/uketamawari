@@ -5,7 +5,9 @@
 ## 概要
 - 店頭タブレット（**iPad・Safari**。仕様書のAndroid/Mopriaから変更）で予約入力→A4承り表を印刷
 - サーバなし・素のHTML/JS/CSS・IndexedDB保存。ビルド工程なし、index.htmlを開くだけ
-- 公開: https://fumisato407-crypto.github.io/uketamawari/ （GitHub Pages・mainにpushで自動反映）
+- 公開: **https://maruendo.github.io/uketamawari/** （GitHub Pages・mainにpushで自動反映）
+  - 2026-08-30にOrganization「maruendo」へリポジトリを移動。
+    個人アカウント名をURLに出したくないという要望のため。旧URL(fumisato407-crypto...)は無効
 - push手段: ポータブルgh（%LOCALAPPDATA%\gh-portable\bin\gh.exe）で認証済み。通常のgit pushが通る
 
 ## 確定した運用・設計判断
