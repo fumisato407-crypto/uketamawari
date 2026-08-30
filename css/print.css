@@ -5,7 +5,8 @@
 @page { size: A4 landscape; margin: 8mm; }
 
 @media print {
-  #app-header, .bottom-bar, #order-bottom-bar, #numpad-overlay { display: none !important; }
+  #app-header, .bottom-bar, #order-bottom-bar, #numpad-overlay,
+  #backup-banner, #paid-bar { display: none !important; }
   .screen { display: none !important; }
   #screen-preview { display: block !important; height: auto; padding: 0; }
   #screen-preview h2 { display: none; }

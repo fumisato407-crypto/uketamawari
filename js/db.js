@@ -31,21 +31,26 @@ const db = (() => {
     });
   }
 
+  // 中断(onabort)を拾わないと、iPadの空き容量切れなどでトランザクションが
+  // 落ちたとき Promise が永久に未解決のままになり、アプリが無言で固まる。
   function tx(store, mode, fn) {
     return open().then((d) => new Promise((resolve, reject) => {
       const t = d.transaction(store, mode);
       const result = fn(t.objectStore(store));
       t.oncomplete = () => resolve(result && result.result !== undefined ? result.result : undefined);
       t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error || new Error("保存が中断されました（空き容量不足の可能性）"));
     }));
   }
 
   return {
     open,
     getAll: (store) => open().then((d) => new Promise((resolve, reject) => {
-      const req = d.transaction(store).objectStore(store).getAll();
+      const t = d.transaction(store);
+      const req = t.objectStore(store).getAll();
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
+      t.onabort = () => reject(t.error || new Error("読み取りが中断されました"));
     })),
     put: (store, value) => tx(store, "readwrite", (s) => s.put(value)),
     delete: (store, key) => tx(store, "readwrite", (s) => s.delete(key)),

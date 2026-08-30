@@ -1,2 +1,5 @@
 _shot_*.png
 _print_test.pdf
+
+# 店の現物資料（価格表・商品写真）。GitHub Pagesは公開なので当面ローカルのみ
+reference/

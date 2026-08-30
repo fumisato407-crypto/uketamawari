@@ -166,7 +166,7 @@ body.customer-mode #app-header nav { display: none; }
   padding: 5mm;
 }
 
-/* A4横に同じ承り表を左右2面（各面はA5相当） */
+/* A4横に承り表を左右2面（各面はA5相当）。左=お客様控・右=店控で中身が違う */
 .sheet-pair { display: flex; align-items: stretch; }
 .sheet-pair .sheet-copy { width: 50%; padding: 0 3mm; }
 .sheet-pair .sheet-copy .sheet { zoom: 0.66; }
@@ -198,6 +198,35 @@ body.customer-mode #app-header nav { display: none; }
 }
 .sheet-bottom .sb-right .lbl { font-size: 10pt; color: #333; }
 .sheet-bottom .sb-right .memo-box { flex: 1; min-height: 100mm; white-space: pre-wrap; }
+
+/* --- 新レイアウト（2026-08-30の店主指示） --- */
+/* 上部は左右2列。左=お客様、右=受渡・支払 */
+.sheet-top { display: flex; gap: 5mm; }
+.sheet-top .st-col { flex: 1; min-width: 0; }
+.sheet-top .st-col .sheet-row { padding: 2mm 1mm; }
+
+/* 空行は細くして、埋まった行と区別する（手書き追記用） */
+.sheet tr.blank td { height: 5mm; }
+.sheet .overflow-warn { color: #c00; font-size: 10pt; }
+
+/* 切り離したあとどちらの控えか分かるように */
+.copy-label {
+  font-size: 10pt; text-align: right; color: #333;
+  border: 1px solid #333; border-radius: 3px;
+  padding: 0.5mm 2mm; float: right; margin-bottom: 1mm;
+}
+
+/* お客様控: 合計の左に御礼、下に店の連絡先 */
+.sheet-customer .sheet-totals .thanks { margin-right: auto; font-size: 12pt; }
+.sheet-customer .sheet-totals { justify-content: flex-start; }
+.shop-info {
+  margin-top: 6mm; padding-top: 3mm; border-top: 1px solid #000;
+  font-size: 10pt; line-height: 1.7;
+}
+.shop-info .shop-name { font-size: 13pt; font-weight: bold; }
+
+/* 店控: 合計は下部左、包材枠は右 */
+.sheet-shop .sb-left .total-price { font-weight: bold; font-size: 14pt; }
 
 /* ===== スマホ縦画面（確認用）: 縦積みレイアウトに切替 =====
    本番のタブレット横持ちでは従来の2ペイン表示のまま */
@@ -265,3 +294,154 @@ body.customer-mode #app-header nav { display: none; }
 #numpad-keys .key-c { background: #f3c6c0; }
 #numpad-actions { display: flex; gap: 10px; margin-top: 12px; }
 #numpad-actions button { flex: 1; }
+
+/* ===== 設定画面 ===== */
+#screen-master.active { overflow-y: auto; }
+.settings-block {
+  background: #fff; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
+  max-width: 720px;
+}
+.settings-block h3 {
+  margin: 0 0 8px; font-size: 17px; color: #5b2e2a;
+  border-bottom: 1px solid #e4ddd0; padding-bottom: 6px;
+}
+.settings-block .note { margin: 0 0 10px; font-size: 14px; color: #666; line-height: 1.6; }
+.backup-status {
+  background: #f4f1ea; border-radius: 8px; padding: 10px 12px;
+  font-size: 15px; line-height: 1.8;
+}
+.settings-actions { display: flex; gap: 10px; margin-top: 12px; }
+.settings-actions button { flex: 0 1 auto; min-width: 200px; }
+
+@media (max-width: 700px) {
+  .settings-actions { flex-direction: column; }
+  .settings-actions button { min-width: 0; }
+}
+
+/* ===== バックアップ促しバナー ===== */
+#backup-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 16px; background: #fdf3d7; border-bottom: 1px solid #e6d28f;
+  font-size: 15px; color: #6b5313;
+}
+#backup-banner.hidden { display: none; }
+#backup-banner-msg { flex: 1; }
+#backup-banner button {
+  border: none; border-radius: 8px; padding: 8px 14px; font-size: 14px;
+}
+#backup-banner-go { background: #c0392b; color: #fff; font-weight: bold; }
+#backup-banner-close { background: #eee4c8; color: #6b5313; }
+/* お客様に渡している間は店側の注意書きを見せない */
+body.customer-mode #backup-banner { display: none; }
+
+/* ===== 支払いトグル（印刷プレビュー画面の上部） ===== */
+#paid-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px; margin-bottom: 10px;
+  background: #fff; border-radius: 10px;
+}
+#paid-bar .paid-label { font-weight: bold; color: #5b2e2a; }
+#paid-bar #paid-hint { font-size: 13px; color: #777; }
+@media (max-width: 700px) {
+  #paid-bar { flex-wrap: wrap; }
+  #paid-bar #paid-hint { flex-basis: 100%; }
+}
+
+/* ===== 選択リスト（商品内容・菓子包材） ===== */
+.picks-field { align-items: flex-start; }
+.picks { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
+.picks-none { color: #999; font-size: 15px; }
+.pick-tag {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  min-height: 44px; padding: 0 12px; font-size: 16px;
+  border: 2px solid #cbbfa8; border-radius: 999px;
+  background: #fbf7ef; color: #333;
+}
+.pick-tag b { font-size: 18px; }
+.pick-tag .x { color: #999; font-size: 15px; }
+.pick-tag:active { background: #f0e2c8; }
+.pick-add {
+  min-height: 44px; padding: 0 14px; font-size: 16px; white-space: nowrap;
+  border: 2px dashed #bfae90; border-radius: 10px;
+  background: #fff; color: #6b5313;
+}
+.item-note-row { align-items: flex-start; flex-wrap: wrap; }
+
+/* 選択モーダル */
+#picker-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: center; z-index: 60;
+}
+#picker-overlay.hidden { display: none; }
+#picker {
+  width: min(760px, 94vw); max-height: 86vh;
+  display: flex; flex-direction: column;
+  background: #fff; border-radius: 16px; padding: 14px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.35);
+}
+#picker-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+#picker-title { flex: 1; font-size: 20px; font-weight: bold; color: #5b2e2a; }
+#picker-head .btn-sub { min-height: 44px; }
+#picker-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; }
+.picker-tab {
+  min-height: 44px; padding: 0 16px; font-size: 16px; white-space: nowrap;
+  border: none; border-radius: 8px; background: #ece7de; color: #444;
+}
+.picker-tab.active { background: #4a3b2a; color: #fff; font-weight: bold; }
+#picker-list {
+  flex: 1; overflow-y: auto; margin-top: 8px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px;
+  align-content: start;
+}
+.picker-item {
+  min-height: 60px; padding: 8px; font-size: 16px; line-height: 1.3;
+  border: 2px solid #d9cfc0; border-radius: 10px; background: #fbf7ef; color: #222;
+}
+.picker-item:active { background: #f0e2c8; }
+.picker-none { color: #999; padding: 20px; }
+
+/* ===== 商品マスタ編集（設定画面） ===== */
+#staff-edit {
+  width: 100%; max-width: 380px; font-size: 17px; padding: 8px 10px;
+  border: 1px solid #bbb; border-radius: 8px; resize: vertical;
+}
+#master-tabs { display: flex; gap: 6px; overflow-x: auto; margin: 12px 0 8px; padding-bottom: 4px; }
+#master-list { display: grid; gap: 8px; }
+.master-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 56px; padding: 8px 14px; text-align: left;
+  border: 1px solid #ddd; border-radius: 10px; background: #fff; font-size: 17px;
+}
+.master-row:active { background: #f4f1ea; }
+.master-row .m-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.master-row .m-price { font-variant-numeric: tabular-nums; color: #444; white-space: nowrap; }
+.master-row .m-off { font-size: 13px; padding: 3px 8px; border-radius: 999px; background: #eee; color: #777; }
+.master-row.off { background: #f6f6f6; color: #999; }
+.master-row.off .m-name { text-decoration: line-through; }
+
+/* 商品編集モーダル */
+#edit-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: center; z-index: 70;
+}
+#edit-overlay.hidden { display: none; }
+#edit-box {
+  width: min(560px, 94vw); max-height: 90vh; overflow-y: auto;
+  background: #fff; border-radius: 16px; padding: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.35);
+}
+#edit-head { font-size: 20px; font-weight: bold; color: #5b2e2a; margin-bottom: 10px; }
+.edit-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eee; }
+.edit-row > label { width: 140px; flex-shrink: 0; font-weight: bold; font-size: 16px; }
+.edit-row input[type="text"], .edit-row input[type="number"], .edit-row select {
+  min-height: 48px; font-size: 17px; padding: 6px 10px;
+  border: 1px solid #bbb; border-radius: 8px; background: #fff; flex: 1; min-width: 100px;
+}
+.edit-row input:disabled { background: #f0f0f0; color: #999; }
+.edit-row .checks { flex-direction: column; align-items: flex-start; gap: 4px; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; white-space: nowrap; }
+.check input { width: 22px; height: 22px; }
+#edit-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+#edit-actions .spacer { flex: 1; }
+#edit-actions .btn-main { flex: 0 0 auto; }
+.btn-sub.danger { background: #f3c6c0; color: #7a2018; }

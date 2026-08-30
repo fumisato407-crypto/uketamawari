@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>予約承り表</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#5b2e2a">
+<!-- iOSは manifest だけでは全画面にならないので専用の指定が要る。
+     apple- 付きは非推奨だがiPadはまだこちらを見るため両方置く -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="承り表">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/print.css" media="print">
 </head>
@@ -18,6 +27,13 @@
     <button data-goto="screen-master" class="nav-btn">設定</button>
   </nav>
 </header>
+
+<!-- バックアップ促しバナー（しばらく書き出していないときだけ表示。お客様画面では隠す） -->
+<div id="backup-banner" class="hidden">
+  <span id="backup-banner-msg"></span>
+  <button id="backup-banner-go">今すぐ書き出す</button>
+  <button id="backup-banner-close">閉じる</button>
+</div>
 
 <!-- 2.1 受注入力画面 -->
 <main id="screen-order" class="screen active">
@@ -112,8 +128,11 @@
       </div>
     </div>
     <div class="form-row">
-      <label for="f-packaging">菓子・包材</label>
-      <input type="text" id="f-packaging">
+      <label>菓子・包材</label>
+      <div class="form-field picks-field">
+        <div id="packaging-picks" class="picks"></div>
+        <button id="btn-pick-packaging" class="pick-add">＋ 包材を選ぶ</button>
+      </div>
     </div>
     <div class="form-row">
       <label for="f-memo">備考</label>
@@ -129,6 +148,15 @@
 <!-- 2.3 印刷プレビュー画面 -->
 <main id="screen-preview" class="screen">
   <h2>印刷プレビュー</h2>
+  <!-- 支払いは会計後に店主が付ける。お客様に渡す画面ではなくここに置く -->
+  <div id="paid-bar">
+    <span class="paid-label">お支払い</span>
+    <div class="btn-group" id="paid-toggle">
+      <button data-val="未" class="toggle-btn active">まだ</button>
+      <button id="btn-paid-yes" data-val="済" class="toggle-btn">いただいた</button>
+    </div>
+    <span id="paid-hint">レジで会計が済んだら「いただいた」にしてください</span>
+  </div>
   <div id="preview-scroll">
     <div id="print-sheet"></div>
   </div>
@@ -152,9 +180,104 @@
 
 <!-- 2.5 商品マスタ編集画面 -->
 <main id="screen-master" class="screen">
-  <h2>設定・商品マスタ編集</h2>
-  <p class="placeholder">（実装順6で作成）</p>
+  <h2>設定</h2>
+
+  <section class="settings-block">
+    <h3>バックアップ</h3>
+    <p class="note">
+      予約データはこのiPadの中だけに保存されます。iPadが壊れると消えるため、
+      定期的に書き出してお店のパソコンに保存してください。
+    </p>
+    <div id="backup-status" class="backup-status">読み込み中…</div>
+    <div class="settings-actions">
+      <button id="btn-export" class="btn-main">バックアップを書き出す</button>
+      <button id="btn-import" class="btn-sub">バックアップから戻す</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+    </div>
+  </section>
+
+  <section class="settings-block">
+    <h3>アプリの状態</h3>
+    <div id="offline-status" class="backup-status">確認中…</div>
+  </section>
+
+  <section class="settings-block">
+    <h3>担当者</h3>
+    <p class="note">お客様情報画面の「受付」に出るボタンです。1行に1名ずつ、改行して入力してください。</p>
+    <textarea id="staff-edit" rows="3" placeholder="担当A&#10;担当B"></textarea>
+    <div class="settings-actions">
+      <button id="btn-save-staff" class="btn-sub">担当者を保存</button>
+    </div>
+  </section>
+
+  <section class="settings-block" id="block-products">
+    <h3>商品の追加・修正</h3>
+    <p class="note">
+      値段を変えたり、新しい商品を足したりできます。使わなくなった商品は「かくす」にすると
+      注文画面に出なくなります（過去の予約は残ります）。
+    </p>
+    <div class="settings-actions">
+      <button id="btn-add-product" class="btn-main">＋ 商品を追加する</button>
+      <button id="btn-reseed" class="btn-sub">価格表の内容に戻す</button>
+    </div>
+    <div id="master-tabs"></div>
+    <div id="master-list"></div>
+  </section>
 </main>
+
+<!-- 商品の編集（モーダル） -->
+<div id="edit-overlay" class="hidden">
+  <div id="edit-box">
+    <div id="edit-head"><span id="edit-title">商品の編集</span></div>
+    <div class="edit-row">
+      <label for="e-name">商品名</label>
+      <input type="text" id="e-name" placeholder="例: 最中 5個">
+    </div>
+    <div class="edit-row">
+      <label for="e-price">値段（税込）</label>
+      <div class="form-field">
+        <input type="number" id="e-price" inputmode="numeric" min="0" step="10" placeholder="例: 1600">
+        <label class="check"><input type="checkbox" id="e-price-manual"> その都度入力する</label>
+      </div>
+    </div>
+    <div class="edit-row">
+      <label for="e-category">置き場所</label>
+      <select id="e-category"></select>
+    </div>
+    <div class="edit-row">
+      <label>選択リストに出す</label>
+      <div class="form-field checks">
+        <label class="check"><input type="checkbox" id="e-sweet"> 詰合せの中身として選べる</label>
+        <label class="check"><input type="checkbox" id="e-packaging"> 菓子・包材として選べる</label>
+      </div>
+    </div>
+    <div class="edit-row">
+      <label>注文画面</label>
+      <div class="btn-group" id="e-active-toggle">
+        <button data-val="表示" class="toggle-btn active">出す</button>
+        <button data-val="非表示" class="toggle-btn">かくす</button>
+      </div>
+    </div>
+    <div id="edit-actions">
+      <button id="edit-delete" class="btn-sub danger">削除</button>
+      <span class="spacer"></span>
+      <button id="edit-cancel" class="btn-sub">やめる</button>
+      <button id="edit-save" class="btn-main">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 商品内容・菓子包材を選ぶモーダル（種類→個数の順に選ぶ） -->
+<div id="picker-overlay" class="hidden">
+  <div id="picker">
+    <div id="picker-head">
+      <span id="picker-title">選ぶ</span>
+      <button id="picker-close" class="btn-sub">閉じる</button>
+    </div>
+    <div id="picker-tabs"></div>
+    <div id="picker-list"></div>
+  </div>
+</div>
 
 <!-- 数量・単価入力テンキー（モーダル） -->
 <div id="numpad-overlay" class="hidden">
@@ -174,9 +297,10 @@
   </div>
 </div>
 
-<script src="data/products.sample.js"></script>
+<script src="data/products.js"></script>
 <script src="js/db.js"></script>
 <script src="js/master.js"></script>
+<script src="js/backup.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
