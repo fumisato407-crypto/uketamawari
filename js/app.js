@@ -33,7 +33,19 @@
   };
 
   /* ===== 画面遷移 ===== */
+  // iPadは入力欄の外を触ってもキーボードが閉じない。出したままだと
+  // 画面下のボタン（印刷など）がキーボードの裏に隠れて押せなくなるので、
+  // 入力欄からフォーカスを外して明示的に閉じる。
+  function closeKeyboard() {
+    const el = document.activeElement;
+    if (el && typeof el.blur === "function"
+        && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) {
+      el.blur();
+    }
+  }
+
   function goto(screenId) {
+    closeKeyboard();
     if (screenId === "screen-customer") onEnterCustomer();
     if (screenId === "screen-list") renderOrderList();
     if (screenId === "screen-master") renderSettings();
@@ -48,6 +60,33 @@
   }
   document.querySelectorAll("[data-goto]").forEach((b) => {
     b.addEventListener("click", () => goto(b.dataset.goto));
+  });
+
+  // 入力欄以外をタップしたらキーボードを閉じる（iPadには「完了」が無いため）
+  document.addEventListener("touchend", (e) => {
+    if (!e.target.closest("input, textarea, select, label")) closeKeyboard();
+  }, { passive: true });
+
+  // 入力欄に入っている間だけ「キーボードを閉じる」ボタンを出す
+  const kbdBtn = $("#btn-close-kbd");
+  kbdBtn.addEventListener("click", closeKeyboard);
+  document.addEventListener("focusin", (e) => {
+    if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) kbdBtn.classList.remove("hidden");
+  });
+  document.addEventListener("focusout", () => {
+    // 次の入力欄へ移る場合もあるので、少し待ってから判定する
+    setTimeout(() => {
+      const el = document.activeElement;
+      if (!el || !/^(INPUT|TEXTAREA)$/.test(el.tagName)) kbdBtn.classList.add("hidden");
+    }, 100);
+  });
+
+  // キーボードの「改行」でも閉じる。textarea（備考）は改行を残したいので対象外
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT") {
+      e.preventDefault();
+      closeKeyboard();
+    }
   });
 
   /* ===== テンキー ===== */
@@ -727,6 +766,7 @@
   });
 
   $("#btn-print").addEventListener("click", async () => {
+    closeKeyboard();
     await saveOrder();
     window.print();
   });

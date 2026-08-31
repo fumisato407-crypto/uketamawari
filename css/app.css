@@ -445,3 +445,7 @@ body.customer-mode #backup-banner { display: none; }
 #edit-actions .spacer { flex: 1; }
 #edit-actions .btn-main { flex: 0 0 auto; }
 .btn-sub.danger { background: #f3c6c0; color: #7a2018; }
+
+/* キーボードを閉じるボタン（iPad対策。入力中だけ出る） */
+#btn-close-kbd { flex: 0 0 auto; }
+#btn-close-kbd.hidden { display: none; }
