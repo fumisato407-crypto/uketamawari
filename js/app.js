@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v16（2026-09-01）";
+  const APP_VERSION = "v18（2026-09-01）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -523,6 +523,19 @@
       .join("・");
   }
 
+  // 店控の右下の大枠に入れる文字。見出しどおり「菓子・包材」の両方を1行ずつ並べる。
+  //   ・注文した商品（菓子）　→　1行あける　→　・包材
+  // 2026-09-01の店主指示。それまでは包材だけだった（8-30の「菓子は入れない」から変更）。
+  function shopBoxText() {
+    const goods = state.items.map((it) => `・${it.name}×${it.qty}`);
+    // 包材は picks が正。picks が無い古い予約は保存済みの文字列で代用する
+    const pack = fmtPicks(state.info.packagingPicks) || state.info.packaging || "";
+    const blocks = [];
+    if (goods.length) blocks.push(goods.join("\n"));
+    if (pack) blocks.push(pack);
+    return blocks.join("\n\n");
+  }
+
   function sheetHTML(kind) {
     const i = state.info;
     const t = totals();
@@ -594,7 +607,7 @@
         </div>
         <div class="sb-right">
           <span class="lbl">トータル数 <b>${t.qty}</b>　菓子・包材</span>
-          <div class="memo-box">${esc(fmtPicks(i.packagingPicks) || i.packaging)}</div>
+          <div class="memo-box">${esc(shopBoxText())}</div>
         </div>
       </div>
     </div>`;
