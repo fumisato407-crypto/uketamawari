@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v19（2026-09-01）";
+  const APP_VERSION = "v20（2026-09-01）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -523,16 +523,31 @@
       .join("・");
   }
 
-  // 店控の右下の大枠に入れる文字。見出しどおり「菓子・包材」の両方を1行ずつ並べる。
-  //   ・注文した商品（菓子）　→　1行あける　→　・包材
-  // 2026-09-01の店主指示。それまでは包材だけだった（8-30の「菓子は入れない」から変更）。
+  /* 店控の右下の大枠 ＝ その予約ぶんの **製造指示書**（店主 2026-09-01）。
+     売った商品名を並べる欄ではない。「何の菓子を何個作り、何の包材を用意するか」を書く。
+       菓子 … 中身(picks)を選んだ明細はその中身を数える。選んでいない明細は商品そのものを数える
+              （大福×10 のような単品も作る菓子なので出す）
+              **詰合せの箱数は掛けない**。中身の数は合計で入力する運用（店主確認）
+       包材 … 選んだ包材
+     どちらも**同じ名前は合算**する。ばらばらに並んでいると作る数を数えられないため。 */
+  function tallyLines(pairs) {
+    const m = new Map();
+    pairs.forEach(([name, qty]) => m.set(name, (m.get(name) || 0) + qty));
+    return [...m].map(([name, qty]) => `・${name}×${qty}`);
+  }
+
   function shopBoxText() {
-    const goods = state.items.map((it) => `・${it.name}×${it.qty}`);
-    // 包材は picks が正。picks が無い古い予約は保存済みの文字列で代用する
-    const pack = fmtPicks(state.info.packagingPicks) || state.info.packaging || "";
+    const goods = [];
+    state.items.forEach((it) => {
+      const picks = it.picks || [];
+      if (picks.length) picks.forEach((p) => goods.push([p.name, p.qty]));
+      else goods.push([it.name, it.qty]);
+    });
+    const packPicks = state.info.packagingPicks || [];
     const blocks = [];
-    if (goods.length) blocks.push(goods.join("\n"));
-    if (pack) blocks.push(pack);
+    if (goods.length) blocks.push(tallyLines(goods).join("\n"));
+    if (packPicks.length) blocks.push(tallyLines(packPicks.map((p) => [p.name, p.qty])).join("\n"));
+    else if (state.info.packaging) blocks.push(state.info.packaging);  // picksが無い古い予約
     return blocks.join("\n\n");
   }
 
