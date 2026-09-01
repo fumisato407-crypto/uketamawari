@@ -7,10 +7,16 @@ html, body {
   background: #f2f0eb;
   color: #222;
   overscroll-behavior: none;
-  user-select: none;
 }
-/* 入力欄まで user-select:none を継がせない。
-   iOSでは継ぐとキャレットが出ず、ソフトキーボードが上がらないことがある */
+/* タップで文字が選択されてしまうのを防ぐ指定は、**入力欄に絶対に継がせない**。
+   iOSでは user-select:none が入力欄に効くと、フォーカスは当たる（カーソルは出る）のに
+   ソフトキーボードが上がらなくなる。以前は body に掛けていたが、
+   打ち消しに頼らず「押すだけの部品」に限って掛ける形にした。ここを body に戻さないこと */
+#app-header, .nav-btn, #backup-banner, button, label, .lbl, .mini-label,
+#category-tabs, #product-grid, #detail-list, #detail-summary,
+#master-tabs, #master-list, #picker-tabs, #picker-list, #numpad, #order-list {
+  -webkit-user-select: none; user-select: none;
+}
 input, textarea, select {
   -webkit-user-select: text; user-select: text;
 }

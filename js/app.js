@@ -19,6 +19,10 @@
 
   const OMOTEGAKI_PRESETS = ["御祝", "内祝", "御供", "志", "御中元", "御歳暮"];
 
+  // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
+  // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
+  const APP_VERSION = "v14（2026-09-01）";
+
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -65,9 +69,16 @@
     b.addEventListener("click", () => goto(b.dataset.goto));
   });
 
-  // 入力欄以外をタップしたらキーボードを閉じる（iPadには「完了」が無いため）
+  // 入力欄以外をタップしたらキーボードを閉じる（iPadには「完了」が無いため）。
+  // iOSは touchend → mousedown → focus の順に起きるので、touchendの時点で即blurすると
+  // 「これから開くキーボード」を潰しかねない。少し待ってフォーカスが動いていないときだけ閉じる。
   document.addEventListener("touchend", (e) => {
-    if (!e.target.closest("input, textarea, select, label")) closeKeyboard();
+    if (e.target.closest("input, textarea, select, label, button")) return;
+    const before = document.activeElement;
+    setTimeout(() => {
+      // この間にフォーカスが動いていたら、そのタップは入力欄を開くタップだったということ
+      if (document.activeElement === before) closeKeyboard();
+    }, 300);
   }, { passive: true });
 
   // 入力欄に入っている間だけ「キーボードを閉じる」ボタンを出す
@@ -86,8 +97,12 @@
     }, 100);
   });
 
-  // キーボードの「改行」でも閉じる。textarea（備考）は改行を残したいので対象外
+  // キーボードの「改行」でも閉じる。textarea（備考）は改行を残したいので対象外。
+  // 日本語入力の「変換の確定」も同じEnterで飛んでくる。ここで閉じてしまうと
+  // 漢字に変換した瞬間にキーボードが消えて名前が打てなくなるので、変換中は必ず無視する
+  // （isComposing が false でも keyCode 229 で来る端末がある）
   document.addEventListener("keydown", (e) => {
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter" && e.target.tagName === "INPUT") {
       e.preventDefault();
       closeKeyboard();
@@ -876,7 +891,7 @@
     const el = $("#offline-status");
     const standalone = window.matchMedia("(display-mode: standalone)").matches
       || window.navigator.standalone === true;
-    const lines = [];
+    const lines = ["この iPad で動いているアプリの版：" + APP_VERSION];
     if (!("serviceWorker" in navigator) || location.protocol === "file:") {
       lines.push("この開き方ではオフライン保存は使えません（動作確認用の表示です）");
     } else {
@@ -1010,6 +1025,30 @@
     } catch (err) {
       alert("読み込めませんでした：" + err.message);
     }
+  });
+
+  // アプリ本体を入れ直す。
+  // 直したはずの修正がiPadに届かない事故（Service Workerが古いキャッシュを返し続ける）が
+  // 起きるため、店主が自分で押して直せる逃げ道を用意しておく。
+  // 消すのはアプリのファイルだけ。予約と商品はIndexedDBにあるので触らない。
+  $("#btn-update-app").addEventListener("click", async () => {
+    if (!navigator.onLine) {
+      alert("Wi-Fiに繋がっていません。\n繋がってからもう一度押してください。");
+      return;
+    }
+    if (!confirm(
+      "アプリの中身を最新のものに入れ直します。\n" +
+      "予約データ・商品の設定は消えません。\n\n続けますか？"
+    )) return;
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k.startsWith("uketamawari-")).map((k) => caches.delete(k)));
+    } catch (err) {
+      console.error("update failed", err);   // 消せなくても読み込み直しは試す
+    }
+    location.reload();
   });
 
   window.addEventListener("online", renderOfflineStatus);

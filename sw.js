@@ -3,7 +3,8 @@
 //
 // 更新手順: ファイルを変更したら必ず CACHE の数字を上げる。
 // 上げ忘れると古いキャッシュが返り続け、iPadに修正が反映されない。
-const CACHE = "uketamawari-v13";
+// js/app.js の APP_VERSION と必ず揃えること（設定画面に出す版番号がずれる）
+const CACHE = "uketamawari-v14";
 
 const ASSETS = [
   "./",            // 公開URLは末尾スラッシュ（.../uketamawari/）で開かれる
