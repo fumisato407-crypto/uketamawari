@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v18（2026-09-01）";
+  const APP_VERSION = "v19（2026-09-01）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -603,7 +603,7 @@
       <div class="sheet-bottom">
         <div class="sb-left">
           <div class="sheet-row"><span class="lbl">合計（税込）</span><span class="val total-price">${yen(t.price)}</span></div>
-          <div class="sheet-row"><span class="lbl">備考</span><span class="val">${esc(i.memo)}</span></div>
+          <div class="sheet-row"><span class="lbl">備考</span><span class="val memo">${esc(i.memo)}</span></div>
         </div>
         <div class="sb-right">
           <span class="lbl">トータル数 <b>${t.qty}</b>　菓子・包材</span>
@@ -1249,7 +1249,9 @@
       Object.assign(state.info, {
         name: "山田 花子", phone: "0312345678", staff: "担当A",
         visitDate: todayStr(), visitTime: "10:00",
-        noshiType: "内", omotegaki: "御祝", memo: "紙袋2枚",
+        noshiType: "内", omotegaki: "御祝",
+        // 改行が紙に出るかを毎回見られるように、備考は複数行にしてある
+        memo: "紙袋2枚\n熨斗は当日お渡し\n夕方以降に来店予定",
       });
       ["#f-name", "#f-phone", "#f-staff"].forEach((id, k) => {
         $(id).value = [state.info.name, state.info.phone, state.info.staff][k];
