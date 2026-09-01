@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v15（2026-09-01）";
+  const APP_VERSION = "v16（2026-09-01）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -147,8 +147,11 @@
        商品内容 … 詰合せの中身。候補は菓子（sweet）
        菓子・包材 … 箱・紙袋など。候補は包材（packaging）
      保存は picks（配列）が正で、紙に出す文字列はそこから組み立てる。 */
+  // 紙に出す形。店主の指示で「・最中×9」を1行ずつ縦に並べる（2026-09-01）。
+  // 横に「・」で繋げると読みにくいとのこと。改行を出すので、
+  // 表示側は white-space を pre-line / pre-wrap にしておくこと
   const fmtPicks = (picks) =>
-    (picks || []).map((p) => `${p.name}${p.qty}`).join("・");
+    (picks || []).map((p) => `・${p.name}×${p.qty}`).join("\n");
 
   const picker = {
     _onPick: null,
@@ -506,8 +509,8 @@
       const it = state.items[r];
       const note = it ? (fmtPicks(it.picks) || it.note || "") : "";
       rows += it
-        ? `<tr><td>${esc(it.name)}</td><td class="c-price">${yen(it.price)}</td><td class="c-qty">${it.qty}</td><td>${esc(note)}</td></tr>`
-        : `<tr class="blank"><td></td><td class="c-price"></td><td class="c-qty"></td><td></td></tr>`;
+        ? `<tr><td>${esc(it.name)}</td><td class="c-price">${yen(it.price)}</td><td class="c-qty">${it.qty}</td><td class="c-note">${esc(note)}</td></tr>`
+        : `<tr class="blank"><td></td><td class="c-price"></td><td class="c-qty"></td><td class="c-note"></td></tr>`;
     }
     return rows;
   }
@@ -1219,12 +1222,15 @@
     if (location.search.includes("demo")) {
       state.items = [
         { productId: "p_002", name: "最中 5個", price: 1600, qty: 2, note: "", picks: [] },
+        // 中身の多い詰合せ＝紙面の高さが一番きつくなる例。レイアウト確認用に残しておく
         { productId: "p_039", name: "丸円堂詰合せ2", price: 2460, qty: 1, note: "",
-          picks: [{ id: "p_001", name: "最中", qty: 3 }, { id: "p_005", name: "中津の笑くぼ", qty: 6 }] },
+          picks: [{ id: "p_001", name: "最中", qty: 9 }, { id: "p_005", name: "中津の笑くぼ", qty: 10 },
+                  { id: "p_010", name: "丸ぼうろ", qty: 6 }, { id: "p_014", name: "もなろん", qty: 4 }] },
         { productId: "p_054", name: "大福", price: 140, qty: 10, note: "", picks: [] },
       ];
       state.items.forEach((it) => { it.note = fmtPicks(it.picks); });
-      state.info.packagingPicks = [{ id: "p_072", name: "階段10", qty: 2 }];
+      state.info.packagingPicks = [{ id: "p_072", name: "階段10", qty: 3 },
+                                   { id: "p_076", name: "紙袋", qty: 2 }];
       state.info.packaging = fmtPicks(state.info.packagingPicks);
       state.currentCategory = "箱 店内";
       Object.assign(state.info, {

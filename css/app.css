@@ -207,6 +207,8 @@ body.customer-mode #app-header nav { display: none; }
 .sheet th, .sheet td { border: 1px solid #000; padding: 1.5mm 2mm; font-size: 11pt; }
 .sheet th { background: #eee; font-weight: normal; font-size: 10pt; }
 .sheet td.c-price, .sheet td.c-qty { text-align: right; white-space: nowrap; }
+/* 商品内容は「・最中×9」を1行ずつ縦に並べる（店主指示）。改行を活かす */
+.sheet td.c-note { white-space: pre-line; line-height: 1.5; }
 .sheet td { height: 8mm; }
 .sheet .sheet-totals { display: flex; justify-content: flex-end; gap: 10mm; padding: 2.5mm 1mm; border-bottom: 2px solid #000; font-size: 13pt; }
 .sheet .sheet-totals .total-price { font-weight: bold; font-size: 15pt; }
