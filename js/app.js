@@ -14,6 +14,7 @@
     currentOrderId: null,  // 保存済みの予約を編集中ならそのID（上書き保存用）
     orderMeta: null,       // { createdAt, status } 既存予約の引き継ぎ
     listFilter: "all",
+    openedFrom: "form",    // "list"=予約一覧から開いた / "form"=入力の流れで来た（印刷画面の戻り先が変わる）
   };
 
   const OMOTEGAKI_PRESETS = ["御祝", "内祝", "御供", "志", "御中元", "御歳暮"];
@@ -54,8 +55,10 @@
     document.body.classList.toggle("customer-mode", screenId === "screen-customer");
     document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
     $("#" + screenId).classList.add("active");
+    // 商品の編集画面は設定画面の続きなので、上のメニューは「設定」を光らせたままにする
+    const navFor = screenId === "screen-edit" ? "screen-master" : screenId;
     document.querySelectorAll(".nav-btn").forEach((b) => {
-      b.classList.toggle("active", b.dataset.goto === screenId);
+      b.classList.toggle("active", b.dataset.goto === navFor);
     });
   }
   document.querySelectorAll("[data-goto]").forEach((b) => {
@@ -68,16 +71,18 @@
   }, { passive: true });
 
   // 入力欄に入っている間だけ「キーボードを閉じる」ボタンを出す
-  const kbdBtn = $("#btn-close-kbd");
-  kbdBtn.addEventListener("click", closeKeyboard);
+  // （お客様情報画面と商品の編集画面の両方に置いてあるのでクラスでまとめて扱う）
+  const kbdBtns = [...document.querySelectorAll(".btn-close-kbd")];
+  const showKbdBtn = (on) => kbdBtns.forEach((b) => b.classList.toggle("hidden", !on));
+  kbdBtns.forEach((b) => b.addEventListener("click", closeKeyboard));
   document.addEventListener("focusin", (e) => {
-    if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) kbdBtn.classList.remove("hidden");
+    if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) showKbdBtn(true);
   });
   document.addEventListener("focusout", () => {
     // 次の入力欄へ移る場合もあるので、少し待ってから判定する
     setTimeout(() => {
       const el = document.activeElement;
-      if (!el || !/^(INPUT|TEXTAREA)$/.test(el.tagName)) kbdBtn.classList.add("hidden");
+      if (!el || !/^(INPUT|TEXTAREA)$/.test(el.tagName)) showKbdBtn(false);
     }, 100);
   });
 
@@ -584,7 +589,21 @@
          <div class="cut-line"></div>
          <div class="sheet-copy">${sheetHTML("shop")}</div>
        </div>`;
+    updatePreviewBar();
   }
+
+  // 下のボタンは来た経路で変える（店主指示 2026-09-01）
+  //   予約一覧から: [予約一覧に戻る][編集する][保存][印刷]
+  //   入力の流れ  : [編集に戻る][保存][印刷]（「編集する」は戻ると同じなので出さない）
+  function updatePreviewBar() {
+    const fromList = state.openedFrom === "list";
+    $("#btn-preview-back").textContent = fromList ? "◀ 予約一覧に戻る" : "◀ 編集に戻る";
+    $("#btn-preview-edit").classList.toggle("hidden", !fromList);
+  }
+  $("#btn-preview-back").addEventListener("click", () => {
+    goto(state.openedFrom === "list" ? "screen-list" : "screen-customer");
+  });
+  $("#btn-preview-edit").addEventListener("click", () => goto("screen-customer"));
 
   // 支払いトグル（印刷プレビュー画面）。押すたびに紙面の表示を作り直す
   makeToggle("#paid-toggle", (val) => {
@@ -650,6 +669,7 @@
     state.items = [];
     state.currentOrderId = null;
     state.orderMeta = null;
+    state.openedFrom = "form";
     state.info = {
       date: "", staff: "", name: "", address: "", phone: "",
       method: "来店", visitDate: "", visitTime: "",
@@ -691,6 +711,7 @@
   function loadOrder(o) {
     state.currentOrderId = o.id;
     state.orderMeta = { createdAt: o.createdAt, status: o.status };
+    state.openedFrom = "list";
     state.items = o.items.map((it) => ({ ...it }));
     const [vd, vt] = (o.delivery.visitAt || "").split("T");
     state.info = {
@@ -711,6 +732,40 @@
   const deliveryDateOf = (o) => o.delivery.method === "来店"
     ? (o.delivery.visitAt || "")
     : (o.delivery.arriveDate || o.delivery.shipDate || "");
+
+  /* 予約一覧の状態表示（店主指示 2026-09-01）
+       ・「受付済／受渡済」は一字違いで紛らわしいので、画面では「まだ・済」で見せる
+       ・お渡しとお支払いは別物なので、必ず見出しを付けて並べる
+       ・押した瞬間に切り替わるとどちらだったか分からなくなるため、確認を挟む */
+  function flagHTML(key, label, done) {
+    return `<div class="o-flag" data-flag="${key}">
+        <span class="of-label">${label}</span>
+        <div class="btn-group">
+          <button class="toggle-btn st-open${done ? "" : " active"}" data-val="未">まだ</button>
+          <button class="toggle-btn st-done${done ? " active" : ""}" data-val="済">済</button>
+        </div>
+      </div>`;
+  }
+
+  async function toggleFlag(o, key, toDone) {
+    const label = key === "hand" ? "お渡し" : "お支払い";
+    const now = key === "hand" ? o.status === "受渡済" : !!o.paid;
+    if (toDone === now) return;   // 今と同じ側を押しただけ
+    const who = o.customer.name ? `${o.customer.name} 様の予約` : "この予約";
+    if (!confirm(`${who}を\n「${label}：${toDone ? "済" : "まだ"}」にしますか？`)) return;
+    if (key === "hand") o.status = toDone ? "受渡済" : "受付済";
+    else o.paid = toDone;
+    await db.put("orders", o);
+    // 同じ予約を印刷プレビューで開いたままなら、そちらの控えも合わせておく。
+    // ずれたまま「保存」を押すと一覧での変更が巻き戻ってしまう
+    if (state.currentOrderId === o.id) {
+      state.info.paid = !!o.paid;
+      state.orderMeta = { createdAt: o.createdAt, status: o.status };
+      syncFormFromInfo();
+      renderSheet();
+    }
+    renderOrderList();
+  }
 
   async function renderOrderList() {
     const ul = $("#order-list");
@@ -734,10 +789,12 @@
            <span class="o-sub">${esc(o.customer.name)} 様　${esc(o.customer.phone)}</span>
          </div>
          <span class="o-total">${yen(o.total)}</span>
-         <span class="o-status ${o.status === "受付済" ? "st-open" : "st-done"}">${o.status}</span>
+         <div class="o-flags">
+           ${flagHTML("hand", "お渡し", o.status === "受渡済")}
+           ${flagHTML("pay", "お支払い", !!o.paid)}
+         </div>
          <div class="o-actions">
            <button class="o-open">開く・再印刷</button>
-           <button class="o-toggle">${o.status === "受付済" ? "受渡済にする" : "受付済に戻す"}</button>
            <button class="o-del">削除</button>
          </div>`;
       li.querySelector(".o-open").addEventListener("click", () => {
@@ -745,10 +802,11 @@
         renderSheet();
         goto("screen-preview");
       });
-      li.querySelector(".o-toggle").addEventListener("click", async () => {
-        o.status = o.status === "受付済" ? "受渡済" : "受付済";
-        await db.put("orders", o);
-        renderOrderList();
+      li.querySelectorAll(".o-flag").forEach((box) => {
+        box.addEventListener("click", (ev) => {
+          const btn = ev.target.closest(".toggle-btn");
+          if (btn) toggleFlag(o, box.dataset.flag, btn.dataset.val === "済");
+        });
       });
       li.querySelector(".o-del").addEventListener("click", async () => {
         if (!confirm(`${o.customer.name} 様の予約（${yen(o.total)}）を削除しますか？`)) return;
@@ -771,10 +829,11 @@
     window.print();
   });
   $("#btn-save-only").addEventListener("click", async () => {
+    const fromList = state.openedFrom === "list";
     await saveOrder();
     alert("保存しました");
     resetOrder();
-    goto("screen-order");
+    goto(fromList ? "screen-list" : "screen-order");
   });
 
   /* ===== 設定画面（バックアップ・アプリの状態） ===== */
@@ -1021,12 +1080,12 @@
     $("#e-packaging").checked = !!editing.packaging;
     document.querySelectorAll("#e-active-toggle .toggle-btn").forEach((b) =>
       b.classList.toggle("active", b.dataset.val === (editing.active ? "表示" : "非表示")));
-    $("#edit-overlay").classList.remove("hidden");
+    goto("screen-edit");
   }
 
   function closeEditor() {
-    $("#edit-overlay").classList.add("hidden");
     editing = null;
+    goto("screen-master");
   }
 
   $("#e-price-manual").addEventListener("change", (e) => {
@@ -1035,9 +1094,6 @@
   });
   makeToggle("#e-active-toggle", (val) => { if (editing) editing.active = val === "表示"; });
   $("#edit-cancel").addEventListener("click", closeEditor);
-  $("#edit-overlay").addEventListener("click", (e) => {
-    if (e.target.id === "edit-overlay") closeEditor();
-  });
 
   $("#edit-save").addEventListener("click", async () => {
     const name = $("#e-name").value.trim();
@@ -1057,16 +1113,16 @@
       packaging: $("#e-packaging").checked,
     };
     await master.save(p);
-    closeEditor();
     await reloadMaster();
+    closeEditor();
   });
 
   $("#edit-delete").addEventListener("click", async () => {
     if (!editing || !editing.id) return;
     if (!confirm(`「${editing.name}」を削除しますか？\n\n※過去の予約に載った分はそのまま残ります。\n　使わないだけなら「かくす」をおすすめします。`)) return;
     await master.remove(editing.id);
-    closeEditor();
     await reloadMaster();
+    closeEditor();
   });
 
   $("#btn-add-product").addEventListener("click", () => openEditor(null));
@@ -1106,7 +1162,10 @@
   /* ===== 起動 ===== */
   // アプリ一式をiPadに保存してWi-Fiなしで起動できるようにする。
   // file:// で開いた動作確認時は登録できないので黙って飛ばす。
-  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  // ?nosw=1 は動作確認用。付けないとローカルサーバでの検証中に
+  // 古いキャッシュが返り続け、直したCSSやJSを見ているつもりで見ていない事故が起きる
+  if ("serviceWorker" in navigator && location.protocol !== "file:"
+      && !location.search.includes("nosw")) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("sw.js").catch(() => {});
     });

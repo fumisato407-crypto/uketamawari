@@ -9,11 +9,16 @@ html, body {
   overscroll-behavior: none;
   user-select: none;
 }
+/* 入力欄まで user-select:none を継がせない。
+   iOSでは継ぐとキャレットが出ず、ソフトキーボードが上がらないことがある */
+input, textarea, select {
+  -webkit-user-select: text; user-select: text;
+}
 
 /* ヘッダー */
 #app-header {
   display: flex; align-items: center; justify-content: space-between;
-  height: 56px; padding: 0 12px;
+  height: 56px; flex: 0 0 auto; padding: 0 12px;
   background: #4a3b2a; color: #fff;
 }
 #app-header h1 { font-size: 20px; margin: 0; }
@@ -25,12 +30,17 @@ html, body {
 }
 .nav-btn.active { background: #d9a441; color: #2b2113; font-weight: bold; }
 
-/* 画面切替 */
-.screen { display: none; height: calc(100% - 56px); }
+/* 画面切替
+   ヘッダーとバックアップ促しバナーの下に残った高さを画面が使う。
+   高さを calc(100% - 56px) と決め打ちにすると、バナーが出た日だけ
+   下のボタン（保存・印刷）が画面外にはみ出して押せなくなる */
+body { display: flex; flex-direction: column; }
+.screen { display: none; flex: 1 1 auto; min-height: 0; }
 .screen.active { display: flex; }
 main.screen { flex-direction: row; }
 #screen-customer.active, #screen-preview.active,
-#screen-list.active, #screen-master.active { flex-direction: column; padding: 16px; }
+#screen-list.active, #screen-master.active,
+#screen-edit.active { flex-direction: column; padding: 16px; }
 .placeholder { color: #999; padding: 24px; }
 
 /* ===== 受注入力画面 ===== */
@@ -150,9 +160,15 @@ body.customer-mode #app-header nav { display: none; }
 #order-list .o-date .o-method { font-size: 14px; color: #666; font-weight: normal; margin-left: 8px; }
 #order-list .o-sub { font-size: 15px; color: #555; }
 #order-list .o-total { font-size: 18px; font-weight: bold; white-space: nowrap; }
-#order-list .o-status { font-size: 14px; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
-#order-list .o-status.st-open { background: #fdebd0; color: #935e0c; }
-#order-list .o-status.st-done { background: #d5e8d4; color: #2e6130; }
+/* お渡し・お支払いの状態。どちらの話か取り違えないよう必ず見出しを付け、
+   「済／まだ」を並べて今どちらなのかが一目で分かるようにする（店主指示 2026-09-01）。
+   押しても即座には変わらず確認を挟む（うっかり触りの防止） */
+#order-list .o-flags { display: flex; gap: 14px; flex-wrap: wrap; }
+#order-list .o-flag { display: flex; align-items: center; gap: 6px; }
+#order-list .of-label { font-size: 14px; color: #555; white-space: nowrap; }
+#order-list .o-flag .toggle-btn { min-height: 44px; padding: 0 14px; font-size: 15px; }
+#order-list .o-flag .toggle-btn.active.st-open { background: #935e0c; border-color: #935e0c; }
+#order-list .o-flag .toggle-btn.active.st-done { background: #2e6130; border-color: #2e6130; }
 #order-list .o-actions { display: flex; gap: 6px; }
 #order-list .o-actions button { min-height: 48px; font-size: 15px; padding: 0 12px; border: none; border-radius: 8px; background: #ece7de; }
 #order-list .o-actions .o-del { background: #f3c6c0; }
@@ -320,7 +336,7 @@ body.customer-mode #app-header nav { display: none; }
 
 /* ===== バックアップ促しバナー ===== */
 #backup-banner {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 12px; flex: 0 0 auto;
   padding: 8px 16px; background: #fdf3d7; border-bottom: 1px solid #e6d28f;
   font-size: 15px; color: #6b5313;
 }
@@ -419,19 +435,14 @@ body.customer-mode #backup-banner { display: none; }
 .master-row.off { background: #f6f6f6; color: #999; }
 .master-row.off .m-name { text-decoration: line-through; }
 
-/* 商品編集モーダル */
-#edit-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.5);
-  display: flex; align-items: center; justify-content: center; z-index: 70;
+/* 商品編集画面（モーダルではなく独立した画面。理由はindex.htmlのコメント参照） */
+#edit-form {
+  flex: 1; overflow-y: auto; max-width: 720px;
+  background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 4px 16px;
 }
-#edit-overlay.hidden { display: none; }
-#edit-box {
-  width: min(560px, 94vw); max-height: 90vh; overflow-y: auto;
-  background: #fff; border-radius: 16px; padding: 16px;
-  box-shadow: 0 8px 30px rgba(0,0,0,.35);
-}
-#edit-head { font-size: 20px; font-weight: bold; color: #5b2e2a; margin-bottom: 10px; }
+.bottom-bar .spacer { flex: 1; }
 .edit-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eee; }
+.edit-row:last-child { border-bottom: none; }
 .edit-row > label { width: 140px; flex-shrink: 0; font-weight: bold; font-size: 16px; }
 .edit-row input[type="text"], .edit-row input[type="number"], .edit-row select {
   min-height: 48px; font-size: 17px; padding: 6px 10px;
@@ -441,11 +452,10 @@ body.customer-mode #backup-banner { display: none; }
 .edit-row .checks { flex-direction: column; align-items: flex-start; gap: 4px; }
 .check { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; white-space: nowrap; }
 .check input { width: 22px; height: 22px; }
-#edit-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
-#edit-actions .spacer { flex: 1; }
-#edit-actions .btn-main { flex: 0 0 auto; }
 .btn-sub.danger { background: #f3c6c0; color: #7a2018; }
 
 /* キーボードを閉じるボタン（iPad対策。入力中だけ出る） */
-#btn-close-kbd { flex: 0 0 auto; }
-#btn-close-kbd.hidden { display: none; }
+.btn-close-kbd { flex: 0 0 auto; }
+.btn-close-kbd.hidden { display: none; }
+/* 予約一覧から開いたときだけ出る「編集する」 */
+#btn-preview-edit.hidden { display: none; }

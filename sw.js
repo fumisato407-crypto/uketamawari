@@ -3,7 +3,7 @@
 //
 // 更新手順: ファイルを変更したら必ず CACHE の数字を上げる。
 // 上げ忘れると古いキャッシュが返り続け、iPadに修正が反映されない。
-const CACHE = "uketamawari-v12";
+const CACHE = "uketamawari-v13";
 
 const ASSETS = [
   "./",            // 公開URLは末尾スラッシュ（.../uketamawari/）で開かれる
