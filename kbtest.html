@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キーボード検査</title>
+<style>
+  /* このページ自体はアプリのCSSを読み込まない。
+     「アプリのせいなのか、iPad側の事情なのか」を切り分けるための素の環境。 */
+  body { font-family: "Hiragino Sans", sans-serif; margin: 0; padding: 16px; font-size: 17px; line-height: 1.7; background: #f7f5f0; color: #222; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  .lead { background: #fff8e0; border: 1px solid #e6d28f; border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; }
+  .card { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  .card h2 { font-size: 18px; margin: 0 0 4px; }
+  .card p { margin: 0 0 10px; font-size: 15px; color: #555; }
+  input[type="text"] { width: 100%; min-height: 52px; font-size: 18px; padding: 8px 10px; border: 2px solid #bbb; border-radius: 8px; background: #fff; }
+  .verdict { margin-top: 10px; font-weight: bold; font-size: 16px; padding: 8px 10px; border-radius: 8px; background: #eee; color: #555; }
+  .verdict.ok { background: #d5e8d4; color: #205020; }
+  .verdict.ng { background: #f7d2cc; color: #7a2018; }
+  /* 検査2用: 文字を選択できないようにする指定（v13までのアプリと同じ状態） */
+  .noselect { -webkit-user-select: none; user-select: none; }
+  /* 検査3用: 画面に浮かべた枠の中 */
+  .fixedbox { position: fixed; left: 8%; right: 8%; top: 30%; background: #fff; border: 3px solid #5b2e2a; border-radius: 12px; padding: 14px; z-index: 50; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+  .fixedbox.hidden { display: none; }
+  iframe { width: 100%; height: 420px; border: 2px solid #bbb; border-radius: 10px; background: #fff; }
+  #env { font-family: monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; background: #f0efe9; border-radius: 8px; padding: 10px; }
+  button { min-height: 48px; font-size: 16px; padding: 0 16px; border: none; border-radius: 8px; background: #4a3b2a; color: #fff; }
+</style>
+</head>
+<body>
+
+<h1>キーボード検査</h1>
+<div class="lead">
+  上から順に、白い入力欄を<b>ひとつずつタップ</b>してください。<br>
+  タップするたびに、その下の帯に<b>「キーボードが出ました」か「出ませんでした」</b>が自動で表示されます。<br>
+  何も入力しなくて構いません。最後に画面を撮って送ってください。
+</div>
+
+<div class="card">
+  <h2>検査1　いちばん素の入力欄</h2>
+  <p>アプリの見た目も仕掛けも一切かけていない、まっさらな入力欄です。</p>
+  <input type="text" id="a" placeholder="ここをタップ">
+  <div class="verdict" id="va">まだタップされていません</div>
+</div>
+
+<div class="card noselect">
+  <h2>検査2　「文字を選択できない」指定をかけた入力欄</h2>
+  <p>先日まで（v13以前）のアプリと同じ状態にしたものです。</p>
+  <input type="text" id="b" placeholder="ここをタップ">
+  <div class="verdict" id="vb">まだタップされていません</div>
+</div>
+
+<div class="card">
+  <h2>検査3　画面に浮かべた枠の中の入力欄</h2>
+  <p>ボタンを押すと枠が出ます。その中の入力欄をタップしてください。</p>
+  <button id="openbox">枠を出す</button>
+  <div class="verdict" id="vc">まだタップされていません</div>
+</div>
+
+<div class="card">
+  <h2>検査4　本物のアプリ（お客様情報の画面）</h2>
+  <p><b>御名前</b>の欄をタップしてください。ここでキーボードが出れば、アプリ側に問題はありません。</p>
+  <iframe id="app" src="index.html?nosw=1&amp;screen=screen-customer"></iframe>
+  <div class="verdict" id="vd">※この枠の中は自動判定できません。キーボードが出たかどうかを目で見てください</div>
+  <p style="margin-top:12px;font-size:14px;color:#555">
+    <b>念のため：</b>このアプリでキーボードを使うのは
+    <b>御名前・御住所・電話番号・担当者名・表書きの自由入力・備考・商品名</b>だけです。<br>
+    個数と単価は自作のテンキー、日付と時刻は端末の日付選択、
+    商品内容と菓子・包材は一覧から選ぶ画面なので、
+    <b>これらはキーボードが出ないのが正常です。</b>
+  </p>
+</div>
+
+<div class="card">
+  <h2>この iPad の情報</h2>
+  <div id="env">読み込み中…</div>
+</div>
+
+<div class="fixedbox hidden" id="box">
+  <div style="font-weight:bold;margin-bottom:8px">浮かべた枠</div>
+  <input type="text" id="c" placeholder="ここをタップ">
+  <div style="margin-top:10px"><button id="closebox">閉じる</button></div>
+</div>
+
+<script>
+// キーボードが本当に出たかは、画面の見える高さが縮んだかどうかで判定できる。
+// iPadは物理キーボードが繋がっていると画面のキーボードを出さないので、
+// その場合はどの検査も「出ませんでした」になる＝アプリのせいではない、と分かる。
+(function () {
+  var vv = window.visualViewport;
+  var baseH = vv ? vv.height : window.innerHeight;
+  var pending = null;
+
+  function judge(id) {
+    var el = document.getElementById(id);
+    var now = vv ? vv.height : window.innerHeight;
+    var shrank = baseH - now;
+    if (shrank > 80) {
+      el.className = "verdict ok";
+      el.textContent = "キーボードが出ました（画面が " + Math.round(shrank) + "px 縮みました）";
+    } else {
+      el.className = "verdict ng";
+      el.textContent = "キーボードは出ませんでした（画面の高さが変わっていません）";
+    }
+    pending = null;
+  }
+
+  function watch(inputId, verdictId) {
+    document.getElementById(inputId).addEventListener("focus", function () {
+      var el = document.getElementById(verdictId);
+      el.className = "verdict";
+      el.textContent = "判定中…（1秒ほどお待ちください）";
+      pending = verdictId;
+      // キーボードは出るまでに間があるので少し待ってから見る
+      setTimeout(function () { if (pending === verdictId) judge(verdictId); }, 1200);
+    });
+  }
+  watch("a", "va");
+  watch("b", "vb");
+  watch("c", "vc");
+
+  document.getElementById("openbox").addEventListener("click", function () {
+    document.getElementById("box").classList.remove("hidden");
+  });
+  document.getElementById("closebox").addEventListener("click", function () {
+    document.getElementById("box").classList.add("hidden");
+  });
+
+  var lines = [
+    "端末情報: " + navigator.userAgent,
+    "ホーム画面から起動: " + (window.navigator.standalone === true ? "はい" : "いいえ（ブラウザ）"),
+    "画面の高さ(基準): " + Math.round(baseH),
+    "visualViewport対応: " + (vv ? "あり" : "なし"),
+    "タッチ点数: " + (navigator.maxTouchPoints || "不明")
+  ];
+  document.getElementById("env").textContent = lines.join("\n");
+})();
+</script>
+</body>
+</html>
