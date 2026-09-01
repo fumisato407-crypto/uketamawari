@@ -3,6 +3,9 @@
 // 以後は IndexedDB が正。店主が設定画面で足した商品・直した値段はこちらに残る。
 const master = (() => {
   const SEED_KEY = "masterSeed";
+  // 同梱データのうち、この端末へ既に届けたidの控え。
+  // 「あとから足した商品だけを配る」ためと、「店主が消した商品を毎回復活させない」ため。
+  const SEEDED_KEY = "seededProductIds";
 
   // 店主が追加した商品にも、プルダウンの候補になるかの印を必ず持たせる
   function normalize(p) {
@@ -28,11 +31,33 @@ const master = (() => {
     return hit ? hit.value : fallback;
   }
 
-  // 初回起動時だけ、同梱の商品データをIndexedDBへ流し込む
-  async function seedIfEmpty() {
+  // 起動のたびに、同梱データと突き合わせる。
+  //   まだ商品が一件も無い＝初回 → 丸ごと取り込む
+  //   既に使っている端末       → **まだ届けていない商品だけ**を足す
+  // 既にある商品には一切触らない。店主が直した値段・名前・かくす設定は必ず残る。
+  // （新しい商品を配るのに「価格表の内容に戻す」を押させると、店の修正が消えてしまうため）
+  async function syncBundled() {
+    const m = window.SAMPLE_MASTER;
     const rows = await db.getAll("products");
-    if (rows.length) return;
-    await reseed();
+    if (!rows.length) { await reseed(); return; }
+
+    let seeded = await settings(SEEDED_KEY, null);
+    const hadRecord = Array.isArray(seeded);
+    // 控えが無い＝この仕組みより前から使っている端末。
+    // 今入っている商品を「届け済み」とみなす（以後に足した分だけが配られる）
+    if (!hadRecord) seeded = rows.map((r) => r.id);
+
+    const known = new Set(seeded);
+    let added = 0;
+    for (const p of m.products) {
+      if (known.has(p.id)) continue;
+      await db.put("products", normalize(p));
+      known.add(p.id);
+      added++;
+    }
+    if (added || !hadRecord) {
+      await db.put("settings", { key: SEEDED_KEY, value: [...known] });
+    }
   }
 
   // 同梱データで丸ごと入れ替える（新しい価格表を配ったときに設定画面から実行）
@@ -41,6 +66,7 @@ const master = (() => {
     await db.clear("products");
     for (const p of m.products) await db.put("products", normalize(p));
     await db.put("settings", { key: "categories", value: m.categories.slice() });
+    await db.put("settings", { key: SEEDED_KEY, value: m.products.map((p) => p.id) });
     if (!(await settings("staff", null))) {
       await db.put("settings", { key: "staff", value: m.staff.slice() });
     }
@@ -48,7 +74,7 @@ const master = (() => {
   }
 
   async function load() {
-    await seedIfEmpty();
+    await syncBundled();
     const m = window.SAMPLE_MASTER;
     const products = (await db.getAll("products")).map(normalize);
     return {
@@ -62,7 +88,7 @@ const master = (() => {
 
   // 設定画面用: 非表示のものも含めた全件
   async function loadAll() {
-    await seedIfEmpty();
+    await syncBundled();
     return (await db.getAll("products")).map(normalize)
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }

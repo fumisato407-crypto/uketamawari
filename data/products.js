@@ -116,5 +116,6 @@ window.SAMPLE_MASTER = {
     {"id": "p_108", "name": "レジ袋", "price": null, "category": "箱 店内", "image": null, "sortOrder": 1080, "active": true, "packaging": true, "sweet": false, "srcCategory": "紙袋", "contents": null},
     {"id": "p_109", "name": "送料", "price": null, "category": "箱 店内", "image": null, "sortOrder": 1090, "active": true, "packaging": false, "sweet": false, "srcCategory": "送料", "contents": null},
     {"id": "p_110", "name": "お抹茶干菓子付き", "price": 650, "category": "箱 店内", "image": null, "sortOrder": 1100, "active": true, "packaging": false, "sweet": false, "srcCategory": "店内飲食", "contents": null},
+    {"id": "p_x01", "name": "オーダー詰合せ", "price": null, "category": "詰合せ2", "sortOrder": 9010, "packaging": false, "sweet": false, "srcCategory": "箱、籠詰合", "contents": null, "image": null, "active": true},
   ]
 };
