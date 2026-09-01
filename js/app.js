@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v17（2026-09-01）";
+  const APP_VERSION = "v16（2026-09-01）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -559,7 +559,7 @@
 
     const table = `
       <table>
-        <tr><th style="width:32%">商品名（箱種類）</th><th style="width:15%">価格（税込）</th><th style="width:8%">個数</th><th>商品内容</th></tr>
+        <tr><th style="width:36%">商品名（箱種類）</th><th style="width:18%">価格（税込）</th><th style="width:10%">個数</th><th>商品内容</th></tr>
         ${itemRows()}
       </table>
       ${state.items.length > ITEM_ROWS
