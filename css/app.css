@@ -205,7 +205,10 @@ body.customer-mode #app-header nav { display: none; }
 .sheet-header .sheet-date { margin-left: auto; }
 .sheet-row { display: flex; border-bottom: 1px solid #000; padding: 2mm 1mm; gap: 3mm; align-items: baseline; }
 .sheet-row .lbl { font-size: 10pt; color: #333; white-space: nowrap; }
-.sheet-row .val { flex: 1; }
+/* min-width:0 と overflow-wrap:anywhere が無いと、区切りのない英数字の並び（長い住所や
+   メールアドレス等）が折り返せず枠を突き抜ける（2026-09-02・実機で確認）。
+   日付欄(.date-val)は nowrap が優先されるので折り返さないまま */
+.sheet-row .val { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 /* 備考は複数行で入力できる欄なので、打った改行をそのまま紙に出す。
    これが無いと改行が空白に潰れて1行に繋がってしまう */
 .sheet-row .val.memo { white-space: pre-line; line-height: 1.5; }
