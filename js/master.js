@@ -39,7 +39,8 @@ const master = (() => {
   // 起動のたびに、同梱データと突き合わせる。
   //   まだ商品が一件も無い＝初回 → 丸ごと取り込む
   //   既に使っている端末       → **まだ届けていない商品だけ**を足す
-  // 既にある商品には一切触らない。店主が直した値段・名前・かくす設定は必ず残る。
+  // 既にある商品は contents（価格表の中身欄。アプリで編集できない値）以外触らない。
+  // 店主が直した値段・名前・かくす設定は必ず残る。
   // （新しい商品を配るのに「価格表の内容に戻す」を押させると、店の修正が消えてしまうため）
   async function syncBundled() {
     const m = window.SAMPLE_MASTER;
@@ -53,9 +54,19 @@ const master = (() => {
     if (!hadRecord) seeded = rows.map((r) => r.id);
 
     const known = new Set(seeded);
+    const byId = new Map(rows.map((r) => [r.id, r]));
     let added = 0;
     for (const p of m.products) {
-      if (known.has(p.id)) continue;
+      if (known.has(p.id)) {
+        // 価格表の「中身」欄（contents）だけは既存の商品にも配る。アプリでは編集できない値で、
+        // 店の修正と衝突しないため（2026-09-02: 詰合せ7の「笑窪205→5」を配るのに
+        // 「価格表の内容に戻す」を押させないで済むように）。店主が決めた fixedPicks は別物で触らない
+        const cur = byId.get(p.id);
+        if (cur && (p.contents ?? null) !== (cur.contents ?? null)) {
+          await db.put("products", normalize({ ...cur, contents: p.contents ?? null }));
+        }
+        continue;
+      }
       await db.put("products", normalize(p));
       known.add(p.id);
       added++;
