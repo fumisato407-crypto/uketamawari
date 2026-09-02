@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v29（2026-09-02）";
+  const APP_VERSION = "v30（2026-09-02）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -311,7 +311,12 @@
       tag.className = "pick-tag";
       tag.innerHTML = `${esc(p.name)}<b>${p.qty}</b><span class="x">×</span>`;
       tag.title = "押すと取り消します";
-      tag.addEventListener("click", () => { picks.splice(idx, 1); onChange(); });
+      // 一回触っただけで消えるのは危ない（店主 2026-09-02）。必ず確認を挟む。
+      // 商品内容・菓子包材・商品編集の「詰合せの中身」の3か所すべてに効く
+      tag.addEventListener("click", () => {
+        if (!confirm(`「${p.name}×${p.qty}」を取り消しますか？`)) return;
+        picks.splice(idx, 1); onChange();
+      });
       el.appendChild(tag);
     });
   }
