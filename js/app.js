@@ -15,13 +15,15 @@
     orderMeta: null,       // { createdAt, status } 既存予約の引き継ぎ
     listFilter: "all",
     openedFrom: "form",    // "list"=予約一覧から開いた / "form"=入力の流れで来た（印刷画面の戻り先が変わる）
+    prevScreen: null,      // 直前の画面。「◀ …へ戻る」は一段だけここへ戻る（2026-09-02）
+    savedSnapshot: null,   // 最後に保存／読み込んだ時点の内容。今と違えば「保存していない変更あり」
   };
 
   const OMOTEGAKI_PRESETS = ["御祝", "内祝", "御供", "志", "御中元", "御歳暮"];
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v32（2026-09-02）";
+  const APP_VERSION = "v33（2026-09-02）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -49,8 +51,42 @@
     }
   }
 
+  /* ===== 入力中ロック（店主と相談のうえ案1に決定 2026-09-02）=====
+     商品を選び始めてから保存・印刷・クリアで終えるまでを「入力中」とし、その間は上の
+     「予約一覧」「設定」を押せなくする。理由: 入力の途中で一覧へ飛んで別の予約を「開く」と、
+     途中の入力が黙って消えていた。確認の窓を増やす案（見るだけモード等）より、
+     「入力中は出られない」の一本にした方が店主が覚えることが少なく、事故も物理的に起きない。
+     入力中を終える出口は3つだけ: プレビューの「保存」「印刷」（どちらも予約一覧へ）、受注入力の「クリア」。
+     一覧から開いた予約は、プレビューの「予約一覧へ戻る」でも閉じられる（未保存の変更があるときだけ確認） */
+  const isBusy = () =>
+    state.items.length > 0 || !!state.info.name.trim() || !!state.info.phone.trim() || !!state.currentOrderId;
+  const snapshot = () => JSON.stringify({ items: state.items, info: state.info });
+  // 未保存の変更があるか。新規入力は保存するまで常に「あり」、開いた予約は読み込み時点と比べる
+  const isDirty = () => isBusy() && snapshot() !== state.savedSnapshot;
+
+  function updateNavLock() {
+    const busy = isBusy();
+    document.querySelectorAll(".nav-btn").forEach((b) => {
+      const lock = busy && b.dataset.goto !== "screen-order";
+      b.classList.toggle("locked", lock);
+      b.setAttribute("aria-disabled", lock ? "true" : "false");
+      if (b.dataset.goto === "screen-order") b.classList.toggle("busy", busy);
+    });
+  }
+  let noticeTimer = null;
+  function showNavNotice(msg) {
+    const el = $("#nav-notice");
+    el.textContent = msg;
+    el.classList.remove("hidden");
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => el.classList.add("hidden"), 4000);
+  }
+
   function goto(screenId) {
     closeKeyboard();
+    const cur = document.querySelector(".screen.active");
+    if (cur && cur.id !== screenId) state.prevScreen = cur.id;
+    updateNavLock();
     if (screenId === "screen-order") renderDetailHeading();
     if (screenId === "screen-customer") onEnterCustomer();
     if (screenId === "screen-list") renderOrderList();
@@ -69,13 +105,24 @@
   }
   document.querySelectorAll("[data-goto]").forEach((b) => {
     b.addEventListener("click", () => {
-      // 上部メニューから受注入力へ戻るときだけ、保存済みの予約が残っていないか確かめる
-      // （お客様画面の「◀ 商品選択へ」は編集の途中なので聞かない）
-      if (b.classList.contains("nav-btn") && b.dataset.goto === "screen-order") {
-        askResetSavedOrder();
+      if (b.classList.contains("locked")) {
+        showNavNotice("入力中です。「保存」「印刷」「クリア」のどれかで終えてから移動できます");
+        return;
       }
       goto(b.dataset.goto);
     });
+  });
+
+  // 「◀ …へ戻る」＝一段だけ前の画面へ。文字は行き先つき（「戻る」だけだと、どこへ戻るのか
+  // 経路によって違うので迷う、との店主指摘 2026-09-02）
+  const SCREEN_LABEL = { "screen-order": "商品選択", "screen-customer": "お客様情報", "screen-preview": "印刷プレビュー", "screen-list": "予約一覧" };
+  function customerBackTarget() {
+    return state.prevScreen === "screen-preview" ? "screen-preview" : "screen-order";
+  }
+  $("#btn-customer-back").addEventListener("click", () => {
+    const to = customerBackTarget();
+    if (to === "screen-preview") renderSheet();   // 直した内容をプレビューに反映してから戻る
+    goto(to);
   });
 
   // 入力欄以外をタップしたらキーボードを閉じる（iPadには「完了」が無いため）。
@@ -413,6 +460,7 @@
   }
 
   function renderDetails() {
+    updateNavLock();
     const ul = $("#detail-list");
     ul.innerHTML = "";
     state.items.forEach((it) => {
@@ -550,6 +598,7 @@
   }
 
   function onEnterCustomer() {
+    $("#btn-customer-back").textContent = `◀ ${SCREEN_LABEL[customerBackTarget()]}へ戻る`;
     if (!state.info.date) {
       state.info.date = todayStr();
       $("#f-date").value = state.info.date;
@@ -770,11 +819,18 @@
   //   入力の流れ  : [編集に戻る][保存][印刷]（「編集する」は戻ると同じなので出さない）
   function updatePreviewBar() {
     const fromList = state.openedFrom === "list";
-    $("#btn-preview-back").textContent = fromList ? "◀ 予約一覧に戻る" : "◀ 編集に戻る";
+    $("#btn-preview-back").textContent = fromList ? "◀ 予約一覧へ戻る" : "◀ お客様情報へ戻る";
     $("#btn-preview-edit").classList.toggle("hidden", !fromList);
   }
   $("#btn-preview-back").addEventListener("click", () => {
-    goto(state.openedFrom === "list" ? "screen-list" : "screen-customer");
+    if (state.openedFrom !== "list") { goto("screen-customer"); return; }
+    // 一覧から開いた予約を閉じて戻る。「編集する」で直して保存していないときだけ確認
+    if (isDirty() && !confirm(
+      "変更を保存していません。\n保存せずに予約一覧へ戻りますか？\n\n" +
+      "（保存するなら【キャンセル】のあと「保存」を押してください）"
+    )) return;
+    resetOrder();
+    goto("screen-list");
   });
   $("#btn-preview-edit").addEventListener("click", () => goto("screen-customer"));
 
@@ -850,29 +906,20 @@
     const order = buildOrder();
     await db.put("orders", order);
     state.orderMeta = { createdAt: order.createdAt, status: order.status };
+    state.savedSnapshot = snapshot();
     renderDetailHeading();
     return order;
   }
 
-  // 印刷・保存が済んだ予約は、印刷画面から上部メニューで「受注入力」に戻っても入力画面に残る。
-  // そのまま次のお客の商品を足して保存すると**前の予約に上書き**されてしまう
-  // （印刷→受注入力→商品追加→保存 で再現済み 2026-09-02）。
-  // 保存済みの予約を開いたまま受注入力へ戻るときは、空にして始めるかを必ず確認する。
-  // まだ保存していない入力の途中なら何も聞かない
-  function askResetSavedOrder() {
-    if (!state.currentOrderId) return;
-    const who = state.info.name ? `${state.info.name} 様の予約` : "保存済みの予約";
-    if (confirm(
-      `${who}が入力画面に残っています。\n空にして、新しい予約を始めますか？\n\n` +
-      `【OK】空にして新しい予約を始める\n【キャンセル】この予約の続きを入力する`
-    )) resetOrder();
-  }
-
+  // 以前ここにあった「受注入力へ戻るときに保存済みの予約が残っていないか確認する」処理は、
+  // 入力中は上部メニューで他画面へ出られなくなった（2026-09-02・案1）ので不要になり削除した。
+  // 印刷・保存は必ず入力を空にして予約一覧へ移るため、前の予約が入力画面に残ることもない
   function resetOrder() {
     state.items = [];
     state.currentOrderId = null;
     state.orderMeta = null;
     state.openedFrom = "form";
+    state.savedSnapshot = null;
     state.info = {
       date: "", staff: "", name: "", address: "", phone: "",
       method: "来店", visitDate: "", visitTime: "",
@@ -929,6 +976,7 @@
     syncFormFromInfo();
     if (state._refreshPackaging) state._refreshPackaging();
     renderDetails();
+    state.savedSnapshot = snapshot();
   }
 
   // 受渡日（来店なら来店日・配送なら着日）で並べる
@@ -1026,17 +1074,35 @@
     renderOrderList();
   });
 
+  // 印刷を押した時点でその注文は「終わり」（店主 2026-09-02）。保存して印刷し、
+  // 印刷の窓が閉じたら入力を空にして予約一覧へ移る。次のお客様は空の受注入力から始められる。
+  // 「閉じた」合図は afterprint。iPad Safariで飛ばない場合に備えて matchMedia("print") も見る。
+  // どちらも来なければ入力画面に残ったままになる（その場合は実機で確認のうえ別の手を打つ）
+  let printing = false;
+  function afterPrintDone() {
+    if (!printing) return;
+    printing = false;
+    resetOrder();
+    goto("screen-list");
+  }
+  window.addEventListener("afterprint", afterPrintDone);
+  if (window.matchMedia) {
+    const mq = window.matchMedia("print");
+    const onChange = (e) => { if (!e.matches) setTimeout(afterPrintDone, 0); };
+    if (mq.addEventListener) mq.addEventListener("change", onChange); else if (mq.addListener) mq.addListener(onChange);
+  }
   $("#btn-print").addEventListener("click", async () => {
     closeKeyboard();
     await saveOrder();
+    printing = true;
     window.print();
   });
+  // 「保存」も同じく注文の区切り。一覧から来ても入力の流れでも予約一覧へ
   $("#btn-save-only").addEventListener("click", async () => {
-    const fromList = state.openedFrom === "list";
     await saveOrder();
     alert("保存しました");
     resetOrder();
-    goto(fromList ? "screen-list" : "screen-order");
+    goto("screen-list");
   });
 
   /* ===== 設定画面（バックアップ・アプリの状態） ===== */

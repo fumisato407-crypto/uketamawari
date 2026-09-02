@@ -488,3 +488,13 @@ body.customer-mode #backup-banner { display: none; }
 #e-picks-hint { font-size: 14px; color: #666; line-height: 1.5; width: 100%; }
 #e-picks-import.hidden { display: none; }
 .edit-row.picks-field { align-items: flex-start; }
+
+/* ===== 入力中ロック（2026-09-02） =====
+   入力中は「予約一覧」「設定」を押せない。灰色にして、押すと下の案内が数秒出る */
+.nav-btn.locked { opacity: 0.4; }
+.nav-btn.busy::after { content: " ●"; color: #ffd27a; font-size: 12px; }
+#nav-notice {
+  flex: 0 0 auto; padding: 8px 16px; font-size: 15px;
+  background: #fbe9d7; color: #7a3e12; border-bottom: 1px solid #e8c39a;
+}
+#nav-notice.hidden { display: none; }
