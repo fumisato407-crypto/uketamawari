@@ -23,7 +23,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v33（2026-09-02）";
+  const APP_VERSION = "v34（2026-09-03）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -786,6 +786,7 @@
   }
 
   function renderSheet() {
+    setPrintedMode(false);
     $("#print-sheet").innerHTML =
       `<div class="sheet-pair">
          <div class="sheet-copy">${sheetHTML("customer")}</div>
@@ -820,6 +821,9 @@
   function updatePreviewBar() {
     const fromList = state.openedFrom === "list";
     $("#btn-preview-back").textContent = fromList ? "◀ 予約一覧へ戻る" : "◀ お客様情報へ戻る";
+    // 一覧から開いたときは直したい場所に一発で入れるよう2つに分ける（案B・2026-09-03）。
+    // 以前の「編集する」1つだと、商品を足す道が見つからなかった（店主指摘）
+    $("#btn-preview-edit-items").classList.toggle("hidden", !fromList);
     $("#btn-preview-edit").classList.toggle("hidden", !fromList);
   }
   $("#btn-preview-back").addEventListener("click", () => {
@@ -833,6 +837,7 @@
     goto("screen-list");
   });
   $("#btn-preview-edit").addEventListener("click", () => goto("screen-customer"));
+  $("#btn-preview-edit-items").addEventListener("click", () => goto("screen-order"));
 
   // 支払いトグル（印刷プレビュー画面）。押すたびに紙面の表示を作り直す
   makeToggle("#paid-toggle", (val) => {
@@ -1074,17 +1079,24 @@
     renderOrderList();
   });
 
-  // 印刷を押した時点でその注文は「終わり」（店主 2026-09-02）。保存して印刷し、
-  // 印刷の窓が閉じたら入力を空にして予約一覧へ移る。次のお客様は空の受注入力から始められる。
+  // 印刷を押した時点でその注文は「終わり」（店主 2026-09-02）。保存して印刷し、印刷の窓が
+  // 閉じたら「印刷済み表示」に切り替える（案C・2026-09-03）: 承り表はそのまま残し、下のボタンを
+  // 「予約一覧へ」「次の予約を入力する」の2つにする。すぐ一覧へ飛ばすと、いま何を印刷したのか
+  // 分からなくなる、との店主指摘のため。どちらのボタンも入力を空にする。
   // 「閉じた」合図は afterprint。iPad Safariで飛ばない場合に備えて matchMedia("print") も見る。
-  // どちらも来なければ入力画面に残ったままになる（その場合は実機で確認のうえ別の手を打つ）
+  // どちらも来なければ普通のボタンのまま（保存→一覧 で終えられる。実機で確認のうえ判断）
   let printing = false;
+  function setPrintedMode(on) {
+    $("#screen-preview").classList.toggle("printed", on);
+    $("#printed-bar").classList.toggle("hidden", !on);
+  }
   function afterPrintDone() {
     if (!printing) return;
     printing = false;
-    resetOrder();
-    goto("screen-list");
+    setPrintedMode(true);
   }
+  $("#btn-printed-list").addEventListener("click", () => { resetOrder(); goto("screen-list"); });
+  $("#btn-printed-next").addEventListener("click", () => { resetOrder(); goto("screen-order"); });
   window.addEventListener("afterprint", afterPrintDone);
   if (window.matchMedia) {
     const mq = window.matchMedia("print");

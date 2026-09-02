@@ -166,11 +166,19 @@
   <div id="preview-scroll">
     <div id="print-sheet"></div>
   </div>
-  <div class="bottom-bar">
-    <!-- 予約一覧から開いたときは「予約一覧に戻る」＋「編集する」の2つ、
-         入力の流れで来たときは「編集に戻る」だけ（JSで切り替える） -->
+  <!-- 印刷が済んだあとの表示（案C・2026-09-03）。承り表はそのまま残し、下のボタンだけ
+       「予約一覧へ」「次の予約を入力する」の2つに変える。どちらも入力を空にする -->
+  <div id="printed-bar" class="hidden">
+    <span class="printed-msg">印刷しました（保存済み）。この予約はこれで終わりです。</span>
+    <button id="btn-printed-list" class="btn-sub">予約一覧へ</button>
+    <button id="btn-printed-next" class="btn-main">次の予約を入力する ▶</button>
+  </div>
+  <div class="bottom-bar" id="preview-bar">
+    <!-- 予約一覧から開いたとき: [予約一覧へ戻る][商品を直す][お客様情報を直す][保存][印刷]（案B・2026-09-03）
+         入力の流れで来たとき : [お客様情報へ戻る][保存][印刷]（JSで切り替える） -->
     <button id="btn-preview-back" class="btn-sub">◀ お客様情報へ戻る</button>
-    <button id="btn-preview-edit" class="btn-sub hidden">編集する</button>
+    <button id="btn-preview-edit-items" class="btn-sub hidden">商品を直す</button>
+    <button id="btn-preview-edit" class="btn-sub hidden">お客様情報を直す</button>
     <button id="btn-save-only" class="btn-sub">保存</button>
     <button id="btn-print" class="btn-main">印刷</button>
   </div>

@@ -498,3 +498,12 @@ body.customer-mode #backup-banner { display: none; }
   background: #fbe9d7; color: #7a3e12; border-bottom: 1px solid #e8c39a;
 }
 #nav-notice.hidden { display: none; }
+
+/* ===== 印刷済み表示（印刷プレビュー・案C 2026-09-03） =====
+   印刷が済んだら承り表はそのまま残し、下を「予約一覧へ／次の予約を入力する」に切り替える */
+#printed-bar {
+  display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 12px;
+}
+#printed-bar.hidden { display: none; }
+#printed-bar .printed-msg { flex: 1; font-size: 17px; color: #2b5d2b; font-weight: bold; }
+#screen-preview.printed #preview-bar, #screen-preview.printed #paid-bar { display: none; }
