@@ -213,7 +213,10 @@ body.customer-mode #app-header nav { display: none; }
    これが無いと改行が空白に潰れて1行に繋がってしまう */
 .sheet-row .val.memo { white-space: pre-line; line-height: 1.5; }
 .sheet-name .val { font-size: 15pt; }
-/* 御来店日時・発送日・着日は折り返すと読みにくいので1行に収める（店主指示 2026-09-02） */
+/* 御来店日時・発送日・着日は折り返すと読みにくいので1行に収める（店主指示 2026-09-02）。
+   PCより幅の狭いiPadの画面では「日付 時刻」が右に突き抜けた（2026-09-02・実機）。
+   「2行にせず1行のまま」が店主の希望なので、折り返しではなく、入り切らないときだけ
+   その欄の文字を小さくして収める（js/app.js の fitDateVals）。nowrapはそのための前提 */
 .sheet-row .val.date-val { white-space: nowrap; }
 .sheet table { width: 100%; border-collapse: collapse; margin-top: 3mm; }
 .sheet th, .sheet td { border: 1px solid #000; padding: 1mm 2mm; font-size: 11pt; }
@@ -480,3 +483,8 @@ body.customer-mode #backup-banner { display: none; }
 .btn-close-kbd.hidden { display: none; }
 /* 予約一覧から開いたときだけ出る「編集する」 */
 #btn-preview-edit.hidden { display: none; }
+
+/* 商品編集の「詰合せの中身」欄 */
+#e-picks-hint { font-size: 14px; color: #666; line-height: 1.5; width: 100%; }
+#e-picks-import.hidden { display: none; }
+.edit-row.picks-field { align-items: flex-start; }

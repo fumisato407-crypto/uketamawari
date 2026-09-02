@@ -268,6 +268,17 @@
         <label class="check"><input type="checkbox" id="e-packaging"> 菓子・包材として選べる</label>
       </div>
     </div>
+    <!-- 詰合せの定番の中身。ここで決めておくと、注文で追加した瞬間に商品内容へ自動で入る。
+         空のままなら従来どおり価格表の「中身」欄の文字を読み取る（読めない詰合せは空のまま） -->
+    <div class="edit-row picks-field">
+      <label>詰合せの中身</label>
+      <div class="form-field checks">
+        <div class="picks" id="e-picks"></div>
+        <button class="pick-add" id="e-pick-add">＋ 中身を選ぶ</button>
+        <span class="note" id="e-picks-hint"></span>
+        <button class="btn-sub hidden" id="e-picks-import">価格表の読み取りを取り込む</button>
+      </div>
+    </div>
     <div class="edit-row">
       <label>注文画面</label>
       <div class="btn-group" id="e-active-toggle">

@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v25（2026-09-02）";
+  const APP_VERSION = "v26（2026-09-02）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -65,6 +65,7 @@
     document.querySelectorAll(".nav-btn").forEach((b) => {
       b.classList.toggle("active", b.dataset.goto === navFor);
     });
+    if (screenId === "screen-preview") fitDateVals();   // 表示されてから測り直す
   }
   document.querySelectorAll("[data-goto]").forEach((b) => {
     b.addEventListener("click", () => {
@@ -185,7 +186,9 @@
     "抹茶羊羹棹": ["抹茶羊羹棹", "羊羹抹茶 1棹"],
     "抹茶羊羹カット": ["抹茶羊羹カット", "羊羹抹茶"],
     "干菓子": "京干菓子2個入",   // 店主確認 2026-09-02: 詰合せの干菓子＝京干菓子2個入が1袋（1個＝1袋）
-    // "どら焼き": 詰合せ5に入るのが生どら焼き・丸円どら焼きのどちらか店主に確認中。決まるまで対象外
+    // 店主確認 2026-09-02: 価格表の「丸円どら焼き」＝店で言う「どら焼き」（200円）。商品名は
+    // 「どら焼き」に直したが、「価格表の内容に戻す」前のiPadには丸円どら焼きの名で届いている
+    "どら焼き": ["どら焼き", "丸円どら焼き"],
   };
   // これ以降が読めなければ「包材の話に移った」とみなして打ち切る（包材はここでは拾わない）
   const CONTENTS_PACKAGING_HINT = /^(箱|籠|敷|ケース|階段|セット箱|デラックス|黒箱|桐箱|茶籠|風呂敷|ワッパ)/;
@@ -215,6 +218,22 @@
       picks.push({ id: hit[1].id, name: hit[1].name, qty });
     }
     return picks.length ? picks : null;
+  }
+
+  /* 明細に追加したときに自動で入れる中身。
+     1. 店主が設定画面で決めた「詰合せの中身」（fixedPicks）があればそれを最優先。
+        名前は今の商品マスタから引き直す（改名しても追従する）。かくした／消した菓子は
+        設定したときの名前のまま出す（作る菓子であることに変わりはないため）
+     2. 無ければ価格表の記載（contents）を読み取る（上の autoPicksFromContents） */
+  function autoPicksFor(product) {
+    const fixed = product.fixedPicks;
+    if (Array.isArray(fixed) && fixed.length) {
+      return fixed.map((f) => {
+        const cur = state.master.products.find((p) => p.id === f.id);
+        return { id: f.id, name: cur ? cur.name : f.name, qty: f.qty };
+      });
+    }
+    return autoPicksFromContents(product);
   }
 
   const picker = {
@@ -334,7 +353,7 @@
     if (existing) { existing.qty += 1; renderDetails(); return; }
 
     // 詰合せ1・2など中身が決まっている商品は、この時点で商品内容を自動で入れておく
-    const autoPicks = autoPicksFromContents(p) || [];
+    const autoPicks = autoPicksFor(p) || [];
     const autoNote = fmtPicksInline(autoPicks);
 
     if (p.price == null) {
@@ -637,9 +656,9 @@
     const noshiOpts = ["内", "外"].map((v) =>
       `<span class="noshi-opt${i.noshiType === v ? " sel" : ""}">${v}</span>`).join("・");
     const visitStr = i.method === "来店"
-      ? `${fmtDateJa(i.visitDate)} ${esc(i.visitTime)}` : "";
-    const shipStr = i.method === "配送" ? fmtDateJa(i.shipDate) : "";
-    const arriveStr = i.method === "配送" ? fmtDateJa(i.arriveDate) : "";
+      ? `<span class="nw">${fmtDateJa(i.visitDate)}</span> <span class="nw">${esc(i.visitTime)}</span>` : "";
+    const shipStr = i.method === "配送" ? `<span class="nw">${fmtDateJa(i.shipDate)}</span>` : "";
+    const arriveStr = i.method === "配送" ? `<span class="nw">${fmtDateJa(i.arriveDate)}</span>` : "";
 
     // 上部は左右2列（左=お客様、右=受渡）
     const head = `
@@ -715,7 +734,26 @@
          <div class="sheet-copy">${sheetHTML("shop")}</div>
        </div>`;
     updatePreviewBar();
+    fitDateVals();
   }
+
+  // 御来店日時・発送日・着日は必ず1行（店主 2026-09-02）。iPadの画面幅では
+  // 「2026年9月8日（火） 09:30」が欄の右に突き抜けたので、入り切らない欄だけ
+  // 文字を0.5ptずつ小さくして収める（下限7pt）。画面が隠れている間は幅が0で測れないので、
+  // プレビューを開いたとき・画面幅が変わったとき・印刷の直前にも掛け直す
+  function fitDateVals() {
+    document.querySelectorAll("#print-sheet .date-val").forEach((el) => {
+      el.style.fontSize = "";
+      if (!el.clientWidth) return;
+      let pt = 12;
+      while (el.scrollWidth > el.clientWidth + 1 && pt > 7) {
+        pt -= 0.5;
+        el.style.fontSize = pt + "pt";
+      }
+    });
+  }
+  window.addEventListener("resize", fitDateVals);
+  window.addEventListener("beforeprint", fitDateVals);
 
   // 下のボタンは来た経路で変える（店主指示 2026-09-01）
   //   予約一覧から: [予約一覧に戻る][編集する][保存][印刷]
@@ -1238,6 +1276,9 @@
       id: null, name: "", price: null, category: masterTab || state.master.categories[0],
       active: true, sweet: false, packaging: false, sortOrder: 99999,
     };
+    // 配列は複製しておく（「やめる」で一覧側のオブジェクトを汚さないため）
+    editing.fixedPicks = (editing.fixedPicks || []).map((x) => ({ ...x }));
+    renderEditorPicks();
     $("#edit-title").textContent = p ? "商品の編集" : "商品の追加";
     $("#edit-delete").style.display = p ? "" : "none";
     $("#e-name").value = editing.name;
@@ -1267,6 +1308,35 @@
     goto("screen-master");
   }
 
+  // 「詰合せの中身」欄。タグの操作は明細の商品内容と同じ（＋で足す／タップで消す）。
+  // 空のときは、価格表の記載から何が読み取れるかを見せて、1タップで取り込めるようにする
+  function renderEditorPicks() {
+    if (!editing) return;
+    renderPicks($("#e-picks"), editing.fixedPicks, renderEditorPicks);
+    const hint = $("#e-picks-hint");
+    const imp = $("#e-picks-import");
+    const parsed = editing.fixedPicks.length ? null : autoPicksFromContents(editing);
+    if (editing.fixedPicks.length) {
+      hint.textContent = "注文に追加すると、この中身が商品内容に自動で入ります";
+    } else if (parsed) {
+      hint.textContent = "価格表の読み取り: " + fmtPicksInline(parsed);
+    } else if (editing.contents) {
+      hint.textContent = `価格表の記載「${editing.contents}」は自動で読み取れません。ここで中身を選んでください`;
+    } else {
+      hint.textContent = "詰合せなら中身を選んでおくと、注文に追加した瞬間に商品内容へ自動で入ります";
+    }
+    imp.classList.toggle("hidden", !parsed);
+    imp.onclick = parsed ? () => { editing.fixedPicks = parsed.map((x) => ({ ...x })); renderEditorPicks(); } : null;
+  }
+  $("#e-pick-add").addEventListener("click", () => {
+    if (!editing) return;
+    picker.open({
+      title: `${$("#e-name").value.trim() || "この商品"} の中身`,
+      kind: "sweet",
+      onPick: (p) => { editing.fixedPicks.push(p); renderEditorPicks(); },
+    });
+  });
+
   $("#e-price-manual").addEventListener("change", (e) => {
     $("#e-price").disabled = e.target.checked;
     if (e.target.checked) $("#e-price").value = "";
@@ -1290,6 +1360,7 @@
       category: $("#e-category").value,
       sweet: $("#e-sweet").checked,
       packaging: $("#e-packaging").checked,
+      fixedPicks: editing.fixedPicks.length ? editing.fixedPicks : null,
     };
     await master.save(p);
     await reloadMaster();
@@ -1309,7 +1380,7 @@
   $("#btn-reseed").addEventListener("click", async () => {
     if (!confirm(
       "商品の一覧を、アプリに入っている価格表の内容に戻します。\n\n" +
-      "お店で足した商品や、直した値段は消えます。\n続けますか？"
+      "お店で足した商品や、直した値段は消えます。\n（予約・担当者・詰合せの中身の設定は残ります）\n続けますか？"
     )) return;
     if (!confirm("本当に戻しますか？この操作は取り消せません。")) return;
     await master.reseed();

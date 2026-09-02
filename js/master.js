@@ -22,6 +22,11 @@ const master = (() => {
       // ピッカーの絞り込み見出し。無ければタブ名で代用する
       srcCategory: p.srcCategory || p.category,
       contents: p.contents ?? null,
+      // 店主が設定画面で決めた詰合せの定番の中身 [{id,name,qty}]。無ければ null
+      // （空配列は「未設定」と同じ扱いにして null に寄せる）
+      fixedPicks: Array.isArray(p.fixedPicks) && p.fixedPicks.length
+        ? p.fixedPicks.map((x) => ({ id: x.id, name: x.name, qty: Number(x.qty) || 1 }))
+        : null,
     };
   }
 
@@ -61,10 +66,14 @@ const master = (() => {
   }
 
   // 同梱データで丸ごと入れ替える（新しい価格表を配ったときに設定画面から実行）
+  // 店主が決めた「詰合せの中身」（fixedPicks）は価格表に無い情報なので、同じidの商品が
+  // 新しい価格表にもあれば引き継ぐ（値段・名前は価格表どおりに戻る）
   async function reseed() {
     const m = window.SAMPLE_MASTER;
+    const keep = new Map();
+    for (const r of await db.getAll("products")) if (r.fixedPicks) keep.set(r.id, r.fixedPicks);
     await db.clear("products");
-    for (const p of m.products) await db.put("products", normalize(p));
+    for (const p of m.products) await db.put("products", normalize({ ...p, fixedPicks: keep.get(p.id) || null }));
     await db.put("settings", { key: "categories", value: m.categories.slice() });
     await db.put("settings", { key: SEEDED_KEY, value: m.products.map((p) => p.id) });
     if (!(await settings("staff", null))) {

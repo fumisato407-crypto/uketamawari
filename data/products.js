@@ -71,7 +71,7 @@ window.SAMPLE_MASTER = {
     {"id": "p_061", "name": "丸円堂干菓子", "price": null, "category": "生菓子", "image": null, "sortOrder": 660, "active": true, "packaging": false, "sweet": true, "srcCategory": "生菓子", "contents": null},
     {"id": "p_058", "name": "フロランタン", "price": 190, "category": "生菓子", "image": null, "sortOrder": 670, "active": true, "packaging": false, "sweet": true, "srcCategory": "生菓子", "contents": null},
     {"id": "p_113", "name": "生どら焼き", "price": 280, "category": "生菓子", "image": null, "sortOrder": 680, "active": true, "packaging": false, "sweet": true, "srcCategory": "生菓子", "contents": null},
-    {"id": "p_114", "name": "丸円どら焼き", "price": 200, "category": "生菓子", "image": null, "sortOrder": 690, "active": true, "packaging": false, "sweet": true, "srcCategory": "生菓子", "contents": null},
+    {"id": "p_114", "name": "どら焼き", "price": 200, "category": "生菓子", "image": null, "sortOrder": 690, "active": true, "packaging": false, "sweet": true, "srcCategory": "生菓子", "contents": null},
     {"id": "p_115", "name": "キイチゴ大福", "price": 250, "category": "生菓子", "image": null, "sortOrder": 700, "active": true, "packaging": false, "sweet": true, "srcCategory": "生菓子", "contents": null},
     {"id": "p_116", "name": "やぶれ饅頭", "price": 180, "category": "生菓子", "image": null, "sortOrder": 710, "active": true, "packaging": false, "sweet": true, "srcCategory": "生菓子", "contents": null},
     {"id": "p_062", "name": "おはぎ", "price": 200, "category": "生菓子", "image": null, "sortOrder": 720, "active": true, "packaging": false, "sweet": true, "srcCategory": "生菓子", "contents": null},
