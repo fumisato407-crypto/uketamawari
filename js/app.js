@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v20（2026-09-01）";
+  const APP_VERSION = "v23（2026-09-02）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -51,6 +51,7 @@
 
   function goto(screenId) {
     closeKeyboard();
+    if (screenId === "screen-order") renderDetailHeading();
     if (screenId === "screen-customer") onEnterCustomer();
     if (screenId === "screen-list") renderOrderList();
     if (screenId === "screen-master") renderSettings();
@@ -66,7 +67,14 @@
     });
   }
   document.querySelectorAll("[data-goto]").forEach((b) => {
-    b.addEventListener("click", () => goto(b.dataset.goto));
+    b.addEventListener("click", () => {
+      // 上部メニューから受注入力へ戻るときだけ、保存済みの予約が残っていないか確かめる
+      // （お客様画面の「◀ 戻る」は編集の途中なので聞かない）
+      if (b.classList.contains("nav-btn") && b.dataset.goto === "screen-order") {
+        askResetSavedOrder();
+      }
+      goto(b.dataset.goto);
+    });
   });
 
   // 入力欄以外をタップしたらキーボードを閉じる（iPadには「完了」が無いため）。
@@ -147,11 +155,66 @@
        商品内容 … 詰合せの中身。候補は菓子（sweet）
        菓子・包材 … 箱・紙袋など。候補は包材（packaging）
      保存は picks（配列）が正で、紙に出す文字列はそこから組み立てる。 */
-  // 紙に出す形。店主の指示で「・最中×9」を1行ずつ縦に並べる（2026-09-01）。
-  // 横に「・」で繋げると読みにくいとのこと。改行を出すので、
-  // 表示側は white-space を pre-line / pre-wrap にしておくこと
-  const fmtPicks = (picks) =>
-    (picks || []).map((p) => `・${p.name}×${p.qty}`).join("\n");
+  // 1件ぶんの表記（「・最中×9」）。縦・横どちらの並べ方でもこれを使い回す
+  const pickLine = (p) => `・${p.name}×${p.qty}`;
+  // 縦1行ずつ（店主指示 2026-09-01）。右下の菓子・包材の大枠はこちら。
+  // 改行を出すので、表示側は white-space を pre-line / pre-wrap にしておくこと
+  const fmtPicks = (picks) => (picks || []).map(pickLine).join("\n");
+  // 横につなげて詰める（店主指示 2026-09-02）。明細表の「商品内容」欄はこちら。
+  // 大枠と違って行の高さが決まっているため、1品ずつ改行すると行が間延びする
+  const fmtPicksInline = (picks) => (picks || []).map(pickLine).join("");
+
+  /* 詰合せ1・2は中身が決まっているので、明細に追加した瞬間に商品内容メモへ
+     自動で中身を入れる（店主 2026-09-02）。中身は商品マスタの contents
+     （価格表の「中身」列をそのまま持つ生の文字列。reference/make_products.py 参照）を、
+     菓子の名前候補と突き合わせて読み取る。表記ゆれ（笑窪→中津の笑くぼ 等）は
+     下の別名表で吸収し、全角数字も算用数字に直してから読む。
+     **確実に読み取れた分だけ**自動で入れる。1つでも怪しければ何も入れず、
+     これまでどおり店主が手で選ぶ（中身を誤読して配るくらいなら、空のままにして
+     気づいてもらう方が安全）。オーダー詰合せ（contents無し）はそもそも対象外＝常に手動。
+     自動で入った後も、他の選択と同じタグ操作（＋で足す／タップで消す）で直せる */
+  const CONTENTS_ALIASES = {
+    "笑窪": "中津の笑くぼ",
+    "モナロン": "もなろん",
+    "丸ボーロ": "丸ぼうろ",
+    "ボーロ": "丸ぼうろ",
+    "水饅頭": "水まんじゅう",
+    "栗羊羹カット": "羊羹栗",
+    "栗羊羹": "羊羹栗",
+    "抹茶羊羹棹": "羊羹抹茶 1棹",
+    "抹茶羊羹カット": "羊羹抹茶",
+    "抹茶羊羹": "羊羹抹茶",
+    "干菓子": "丸円堂干菓子",
+  };
+  // これ以降が読めなければ「包材の話に移った」とみなして打ち切る（包材はここでは拾わない）
+  const CONTENTS_PACKAGING_HINT = /^(箱|籠|敷|ケース|階段|セット箱|デラックス|黒箱|桐箱|茶籠|風呂敷|ワッパ)/;
+  const toHankakuDigits = (s) => s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+
+  function autoPicksFromContents(product) {
+    if (!product.contents) return null;
+    const sweets = state.master.products.filter((p) => p.sweet);
+    const candidates = [
+      ...sweets.map((p) => [p.name, p]),
+      ...Object.entries(CONTENTS_ALIASES)
+        .map(([alias, name]) => [alias, sweets.find((p) => p.name === name)])
+        .filter(([, p]) => p),
+    ].sort((a, b) => b[0].length - a[0].length);   // 長い表記から先に試す（部分一致の誤爆防止）
+
+    let s = toHankakuDigits(product.contents);
+    const picks = [];
+    while (s.length) {
+      const hit = candidates.find(([alias]) => s.startsWith(alias));
+      if (!hit) return (CONTENTS_PACKAGING_HINT.test(s) && picks.length) ? picks : null;
+      s = s.slice(hit[0].length);
+      const numMatch = s.match(/^\d+/);
+      if (!numMatch) return null;   // 名前の直後に個数が無い＝読み方の想定が外れている
+      const qty = Number(numMatch[0]);
+      s = s.slice(numMatch[0].length);
+      if (qty <= 0 || qty > 30) return null;   // 桁の誤読（例: 205個）を弾く安全弁
+      picks.push({ id: hit[1].id, name: hit[1].name, qty });
+    }
+    return picks.length ? picks : null;
+  }
 
   const picker = {
     _onPick: null,
@@ -269,6 +332,10 @@
     const existing = state.items.find((it) => it.productId === p.id);
     if (existing) { existing.qty += 1; renderDetails(); return; }
 
+    // 詰合せ1・2など中身が決まっている商品は、この時点で商品内容を自動で入れておく
+    const autoPicks = autoPicksFromContents(p) || [];
+    const autoNote = fmtPicksInline(autoPicks);
+
     if (p.price == null) {
       // 価格未定商品: 単価を手入力してから明細へ
       numpad.open({
@@ -276,13 +343,13 @@
         initial: 0,
         onOk: (price) => {
           if (price <= 0) return;
-          state.items.push({ productId: p.id, name: p.name, price, qty: 1, note: "", picks: [] });
+          state.items.push({ productId: p.id, name: p.name, price, qty: 1, note: autoNote, picks: autoPicks });
           renderDetails();
         },
       });
       return;
     }
-    state.items.push({ productId: p.id, name: p.name, price: p.price, qty: 1, note: "", picks: [] });
+    state.items.push({ productId: p.id, name: p.name, price: p.price, qty: 1, note: autoNote, picks: autoPicks });
     renderDetails();
   }
 
@@ -350,6 +417,14 @@
     const t = totals();
     $("#total-qty").textContent = t.qty;
     $("#total-price").textContent = yen(t.price);
+    renderDetailHeading();
+  }
+
+  // 明細の見出し。保存済みの予約を開いているときは誰の予約かを出して、
+  // 「前のお客の予約が残ったまま次の商品を足す」事故に気づけるようにする
+  function renderDetailHeading() {
+    $("#detail-pane h2").textContent = state.currentOrderId
+      ? `明細（保存済み：${state.info.name || "名前なし"} 様）` : "明細";
   }
 
   $("#btn-clear-order").addEventListener("click", () => {
@@ -472,7 +547,7 @@
 
       const refresh = () => {
         renderPicks(picksEl, it.picks, refresh);
-        it.note = fmtPicks(it.picks);   // 紙・保存用の文字列を同期
+        it.note = fmtPicksInline(it.picks);   // 紙・保存用の文字列を同期
       };
       add.addEventListener("click", () => {
         picker.open({
@@ -507,7 +582,7 @@
     let rows = "";
     for (let r = 0; r < ITEM_ROWS; r++) {
       const it = state.items[r];
-      const note = it ? (fmtPicks(it.picks) || it.note || "") : "";
+      const note = it ? (fmtPicksInline(it.picks) || it.note || "") : "";
       rows += it
         ? `<tr><td>${esc(it.name)}</td><td class="c-price">${yen(it.price)}</td><td class="c-qty">${it.qty}</td><td class="c-note">${esc(note)}</td></tr>`
         : `<tr class="blank"><td></td><td class="c-price"></td><td class="c-qty"></td><td class="c-note"></td></tr>`;
@@ -525,10 +600,12 @@
 
   /* 店控の右下の大枠 ＝ その予約ぶんの **製造指示書**（店主 2026-09-01）。
      売った商品名を並べる欄ではない。「何の菓子を何個作り、何の包材を用意するか」を書く。
-       菓子 … 中身(picks)を選んだ明細はその中身を数える。選んでいない明細は商品そのものを数える
-              （大福×10 のような単品も作る菓子なので出す）
-              **詰合せの箱数は掛けない**。中身の数は合計で入力する運用（店主確認）
-       包材 … 選んだ包材
+       菓子 … 中身(picks)を選んだ明細は、**中身の個数×その商品(箱)の個数**で数える
+              （中身は1箱ぶんの入力なので、箱が複数ならその分だけ増やす。店主 2026-09-02。
+              以前は「箱数は掛けない」だったが、紙の承り表への店主の赤字修正で
+              実際の総数と食い違うことが分かり、この掛け算に変更した）。
+              選んでいない明細は商品そのものを数える（大福×10 のような単品も作る菓子なので出す）
+       包材 … 選んだ包材（個数はそのまま。箱の数と結び付いていないため掛けない）
      どちらも**同じ名前は合算**する。ばらばらに並んでいると作る数を数えられないため。 */
   function tallyLines(pairs) {
     const m = new Map();
@@ -540,7 +617,7 @@
     const goods = [];
     state.items.forEach((it) => {
       const picks = it.picks || [];
-      if (picks.length) picks.forEach((p) => goods.push([p.name, p.qty]));
+      if (picks.length) picks.forEach((p) => goods.push([p.name, p.qty * it.qty]));
       else goods.push([it.name, it.qty]);
     });
     const packPicks = state.info.packagingPicks || [];
@@ -575,13 +652,14 @@
           <div class="sheet-row sheet-name"><span class="lbl">御名前</span><span class="val">${esc(i.name)}</span><span>様</span></div>
           <div class="sheet-row"><span class="lbl">御住所</span><span class="val">${esc(i.address)}</span></div>
           <div class="sheet-row"><span class="lbl">電話番号</span><span class="val">${esc(i.phone)}</span></div>
-          <div class="sheet-row"><span class="lbl">表書き</span><span class="val">${esc(i.omotegaki)}</span></div>
+          <div class="sheet-row"><span class="lbl">支払</span><span class="val">${paidHTML()}</span></div>
         </div>
         <div class="st-col">
-          <div class="sheet-row"><span class="lbl">御来店日時</span><span class="val">${visitStr}</span></div>
-          <div class="sheet-row"><span class="lbl">配送</span><span class="lbl">発送日</span><span class="val">${shipStr}</span><span class="lbl">着日</span><span class="val">${arriveStr}</span></div>
+          <div class="sheet-row"><span class="lbl">御来店日時</span><span class="val date-val">${visitStr}</span></div>
+          <div class="sheet-row"><span class="lbl">発送日</span><span class="val date-val">${shipStr}</span></div>
+          <div class="sheet-row"><span class="lbl">着日</span><span class="val date-val">${arriveStr}</span></div>
           <div class="sheet-row"><span class="lbl">熨斗</span><span>${noshiOpts}</span><span class="lbl">サイズ</span><span class="val">${esc(i.noshiSize)}</span></div>
-          <div class="sheet-row"><span class="lbl">支払</span><span class="val">${paidHTML()}</span></div>
+          <div class="sheet-row"><span class="lbl">表書き</span><span class="val">${esc(i.omotegaki)}</span></div>
         </div>
       </div>`;
 
@@ -657,11 +735,21 @@
     renderSheet();
   });
 
-  $("#btn-to-preview").addEventListener("click", () => {
+  // ボタンの文言どおり、ここで実際に保存する（2026-09-02）。
+  // 以前は保存せずプレビューへ進むだけで、印刷か「保存」を押す前に上部メニューで
+  // 他の画面へ移るとお客様の入力がまるごと消えていた。
+  // 保存に失敗しても印刷はさせたいので、失敗は知らせたうえでプレビューへ進む
+  $("#btn-to-preview").addEventListener("click", async () => {
     const missing = [];
     if (!state.info.name.trim()) missing.push("御名前");
     if (!state.info.phone.trim()) missing.push("電話番号");
     if (missing.length) { alert(missing.join("・") + " を入力してください"); return; }
+    try {
+      await saveOrder();
+    } catch (err) {
+      console.error("save failed", err);
+      alert("保存できませんでした：" + err.message + "\n印刷はできます。あとで「保存」を押し直してください");
+    }
     renderSheet();
     goto("screen-preview");
   });
@@ -669,11 +757,16 @@
   /* ===== 予約の保存・一覧 ===== */
   function pad2(n) { return String(n).padStart(2, "0"); }
 
+  // 同じ日の**最大番号＋1**を振る。「件数＋1」にすると、予約を1件削除したあとの新規保存が
+  // 既存の番号と重なり、その予約を黙って上書きして消してしまう
+  // （A,B保存→A削除→C保存 で B が消えるのをヘッドレスで再現 2026-09-02）。件数方式に戻さないこと
   async function nextOrderId() {
     const prefix = "o_" + (state.info.date || todayStr()).replace(/-/g, "") + "_";
     const all = await db.getAll("orders");
-    const seq = all.filter((o) => o.id.startsWith(prefix)).length + 1;
-    return prefix + String(seq).padStart(3, "0");
+    const maxSeq = all
+      .filter((o) => o.id.startsWith(prefix))
+      .reduce((m, o) => Math.max(m, Number(o.id.slice(prefix.length)) || 0), 0);
+    return prefix + String(maxSeq + 1).padStart(3, "0");
   }
 
   function buildOrder() {
@@ -708,7 +801,22 @@
     const order = buildOrder();
     await db.put("orders", order);
     state.orderMeta = { createdAt: order.createdAt, status: order.status };
+    renderDetailHeading();
     return order;
+  }
+
+  // 印刷・保存が済んだ予約は、印刷画面から上部メニューで「受注入力」に戻っても入力画面に残る。
+  // そのまま次のお客の商品を足して保存すると**前の予約に上書き**されてしまう
+  // （印刷→受注入力→商品追加→保存 で再現済み 2026-09-02）。
+  // 保存済みの予約を開いたまま受注入力へ戻るときは、空にして始めるかを必ず確認する。
+  // まだ保存していない入力の途中なら何も聞かない
+  function askResetSavedOrder() {
+    if (!state.currentOrderId) return;
+    const who = state.info.name ? `${state.info.name} 様の予約` : "保存済みの予約";
+    if (confirm(
+      `${who}が入力画面に残っています。\n空にして、新しい予約を始めますか？\n\n` +
+      `【OK】空にして新しい予約を始める\n【キャンセル】この予約の続きを入力する`
+    )) resetOrder();
   }
 
   function resetOrder() {

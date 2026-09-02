@@ -12,8 +12,12 @@
   #screen-preview h2 { display: none; }
   body { background: #fff; }
   #preview-scroll { overflow: visible; background: none; padding: 0; border-radius: 0; }
+  /* 幅は画面と同じ 281mm に固定する（auto にしない）。
+     iPadのSafariは印刷時、ページをその時の画面幅で組んでから紙の幅に合わせて拡大縮小する。
+     幅 auto だと縦持ち（幅の狭い画面）で組まれた紙面が紙の幅まで引き伸ばされ、
+     縦にはみ出して2枚目に分かれうる。幅を固定しておけば向きに関係なく同じ縮尺になる */
   #print-sheet {
-    width: auto; min-height: 0; margin: 0;
+    width: 281mm; min-height: 0; margin: 0;
     box-shadow: none; padding: 0;
   }
 }
