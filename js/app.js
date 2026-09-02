@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v28（2026-09-02）";
+  const APP_VERSION = "v29（2026-09-02）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -1313,23 +1313,38 @@
 
   // 「詰合せの中身」欄。タグの操作は明細の商品内容と同じ（＋で足す／タップで消す）。
   // 空のときは、価格表の記載から何が読み取れるかを見せて、1タップで取り込めるようにする
+  // 店主の指摘（2026-09-02）: 空欄のときは価格表の読み取りがそのまま自動で入るので
+  // 「取り込む」ボタンは要らない。要るのは**手で変えた後に価格表の記載へ戻したいとき**。
+  // 戻すと今の設定が消えるので、押した瞬間には変えず必ず確認を出す
   function renderEditorPicks() {
     if (!editing) return;
     renderPicks($("#e-picks"), editing.fixedPicks, renderEditorPicks);
     const hint = $("#e-picks-hint");
-    const imp = $("#e-picks-import");
-    const parsed = editing.fixedPicks.length ? null : autoPicksFromContents(editing);
-    if (editing.fixedPicks.length) {
+    const btn = $("#e-picks-import");
+    const parsed = autoPicksFromContents(editing);
+    const manual = editing.fixedPicks.length > 0;
+    if (manual && parsed) {
+      hint.textContent = "注文に追加すると、この中身が商品内容に自動で入ります（価格表の記載: " + fmtPicksInline(parsed) + "）";
+    } else if (manual) {
       hint.textContent = "注文に追加すると、この中身が商品内容に自動で入ります";
     } else if (parsed) {
-      hint.textContent = "価格表の読み取り: " + fmtPicksInline(parsed);
+      hint.textContent = "価格表の記載どおり自動で入ります: " + fmtPicksInline(parsed) + "　※変えたいときだけ上で選び直してください";
     } else if (editing.contents) {
       hint.textContent = `価格表の記載「${editing.contents}」は自動で読み取れません。ここで中身を選んでください`;
     } else {
       hint.textContent = "詰合せなら中身を選んでおくと、注文に追加した瞬間に商品内容へ自動で入ります";
     }
-    imp.classList.toggle("hidden", !parsed);
-    imp.onclick = parsed ? () => { editing.fixedPicks = parsed.map((x) => ({ ...x })); renderEditorPicks(); } : null;
+    const showReset = manual && !!parsed;
+    btn.classList.toggle("hidden", !showReset);
+    btn.onclick = showReset ? () => {
+      if (!confirm(
+        "詰合せの中身を、価格表の記載に戻します。\n\n" +
+        "今ここで選んでいる中身（" + fmtPicksInline(editing.fixedPicks) + "）は消えます。\n" +
+        "価格表の記載: " + fmtPicksInline(parsed) + "\n\n戻しますか？"
+      )) return;
+      editing.fixedPicks = [];
+      renderEditorPicks();
+    } : null;
   }
   $("#e-pick-add").addEventListener("click", () => {
     if (!editing) return;
