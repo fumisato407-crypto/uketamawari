@@ -21,7 +21,7 @@
 
   // 設定画面に出す版番号。iPadに届いているのが新しい版かを店主と電話で確認するために要る。
   // **sw.js の CACHE と必ず同じ番号にすること**（片方だけ上げると嘘の表示になる）
-  const APP_VERSION = "v31（2026-09-02）";
+  const APP_VERSION = "v32（2026-09-02）";
 
   const $ = (sel) => document.querySelector(sel);
   const yen = (n) => "¥" + Number(n).toLocaleString("ja-JP");
@@ -70,7 +70,7 @@
   document.querySelectorAll("[data-goto]").forEach((b) => {
     b.addEventListener("click", () => {
       // 上部メニューから受注入力へ戻るときだけ、保存済みの予約が残っていないか確かめる
-      // （お客様画面の「◀ 戻る」は編集の途中なので聞かない）
+      // （お客様画面の「◀ 商品選択へ」は編集の途中なので聞かない）
       if (b.classList.contains("nav-btn") && b.dataset.goto === "screen-order") {
         askResetSavedOrder();
       }
