@@ -6,10 +6,15 @@
 
 @media print {
   #app-header, .bottom-bar, #order-bottom-bar, #numpad-overlay,
-  #backup-banner, #paid-bar { display: none !important; }
+  #backup-banner, #nav-notice, #paid-bar, #printed-bar { display: none !important; }
   .screen { display: none !important; }
   #screen-preview { display: block !important; height: auto; padding: 0; }
-  #screen-preview h2 { display: none; }
+  /* 承り表（#preview-scroll）以外は何であれ紙に出さない。
+     v34で足した「印刷しました」の帯とボタンが紙に印刷された（2026-09-03・実機）。
+     iPadは印刷の窓を開いた時点で afterprint が飛び、その後に紙面を組み直すため、
+     窓を開いたあとに現れた要素も紙に載る。要素を足すたびに上の一覧へ書き足すのは
+     漏れるので、ここで「承り表以外は全部消す」と決めておく */
+  #screen-preview > :not(#preview-scroll) { display: none !important; }
   body { background: #fff; }
   #preview-scroll { overflow: visible; background: none; padding: 0; border-radius: 0; }
   /* 幅は画面と同じ 281mm に固定する（auto にしない）。
